@@ -1,0 +1,6 @@
+{
+  "name": "Arez Barbershop - POS & Queue",
+  "description": "Sistem POS dan antrean hybrid monokrom minimalis untuk Arez Barbershop dengan manajemen HPP, live battery progress indicator, dan analitik keuangan.",
+  "requestFramePermissions": ["notifications"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

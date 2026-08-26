@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" fill="#000000" rx="64"/>
+  <!-- Razor & Barber Pole Minimalist Monochromatic Line Art -->
+  <g fill="none" stroke="#FFFFFF" stroke-width="20" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Blade geometry -->
+    <path d="M120 180 L392 180 C405 180 416 191 416 204 L416 308 C416 321 405 332 392 332 L120 332 C107 332 96 321 96 308 L96 204 C96 191 107 180 120 180 Z" stroke-width="16"/>
+    <!-- Razor center slot -->
+    <rect x="160" y="240" width="192" height="32" rx="16" fill="#FFFFFF"/>
+    <circle cx="160" cy="256" r="28" fill="#000000" stroke="#FFFFFF" stroke-width="12"/>
+    <circle cx="352" cy="256" r="28" fill="#000000" stroke="#FFFFFF" stroke-width="12"/>
+    <circle cx="256" cy="256" r="16" fill="#000000"/>
+    <!-- Top precision scissors / text -->
+    <text x="256" y="420" text-anchor="middle" fill="#FFFFFF" stroke="none" font-family="system-ui, -apple-system, sans-serif" font-weight="900" font-size="44" letter-spacing="8">AREZ</text>
+    <text x="256" y="460" text-anchor="middle" fill="#A1A1AA" stroke="none" font-family="system-ui, -apple-system, sans-serif" font-weight="500" font-size="18" letter-spacing="6">BARBERSHOP</text>
+  </g>
+</svg>

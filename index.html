@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <title>Arez Barbershop — POS & Live Queue</title>
+    <meta name="description" content="Sistem POS terintegrasi dan antrean hybrid Arez Barbershop dengan visual progress 18 menit dan kalkulasi HPP presisi." />
+
+    <!-- Web App Manifest & App Icons -->
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" href="/iconappbarber.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/iconappbarber.svg" />
+
+    <!-- Theme & Status Bar Colors -->
+    <meta name="theme-color" content="#0d0d0d" />
+
+    <!-- iOS Standalone Native Feel -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Arez Barbershop" />
+
+    <!-- Android Standalone Native Feel -->
+    <meta name="mobile-web-app-capable" content="yes" />
+
+    <!-- Luxury Typography Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+    <!-- Immediate Critical Splash Screen Styles -->
+    <style>
+      #app-splash {
+        position: fixed;
+        inset: 0;
+        background: #0d0d0d;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        transition: opacity 0.4s ease;
+      }
+      #app-splash.hide {
+        opacity: 0;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body class="bg-[#F7F6F2] text-[#20231F] antialiased min-h-screen min-h-[100dvh]">
+    <!-- Native App Splash Screen -->
+    <div id="app-splash">
+      <img src="/iconappbarber.svg" alt="Arez Barbershop" width="120" height="120" style="max-width: 120px; max-height: 120px; object-fit: contain;" />
+    </div>
+
+    <div id="root"></div>
+
+    <script type="module" src="/src/main.tsx"></script>
+
+    <script>
+      // 1. Service Worker Registration
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker.register("/sw.js").catch(console.error);
+        });
+      }
+
+      // 2. Splash Screen Controller
+      window.addEventListener("load", () => {
+        const splash = document.getElementById("app-splash");
+        if (splash) {
+          setTimeout(() => splash.classList.add("hide"), 600);
+          setTimeout(() => {
+            if (splash && splash.parentNode) {
+              splash.parentNode.removeChild(splash);
+            }
+          }, 1100);
+        }
+      });
+
+      // 3. Standalone / PWA Mode Detection
+      function isRunningAsPWA() {
+        return (
+          window.matchMedia("(display-mode: standalone)").matches ||
+          window.navigator.standalone === true
+        );
+      }
+
+      if (isRunningAsPWA()) {
+        document.body.classList.add("is-pwa");
+        const installBtn = document.getElementById("install-app-btn");
+        if (installBtn) installBtn.style.display = "none";
+      }
+
+      // 4. Prevent Image / Icon Dragging
+      document.addEventListener("dragstart", (e) => {
+        if (e.target && (e.target.tagName === "IMG" || e.target.tagName === "SVG")) {
+          e.preventDefault();
+        }
+      });
+    </script>
+  </body>
+</html>

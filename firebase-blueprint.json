@@ -1,0 +1,148 @@
+{
+  "entities": {
+    "users": {
+      "title": "User",
+      "description": "User profile with role-based access",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "role": { "type": "string", "enum": ["OWNER", "STAFF", "CUSTOMER"] },
+        "username": { "type": "string" },
+        "full_name": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "avatar_url": { "type": "string" },
+        "total_visits": { "type": "number" },
+        "last_visit_at": { "type": "string" },
+        "favorite_day": { "type": "string" },
+        "favorite_hour": { "type": "string" },
+        "favorite_service": { "type": "string" },
+        "created_at": { "type": "string" }
+      },
+      "required": ["role", "full_name", "email"]
+    },
+    "queues": {
+      "title": "QueueItem",
+      "description": "Single-pipeline queue item",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "queue_date": { "type": "string" },
+        "queue_number": { "type": "number" },
+        "customer_id": { "type": "string" },
+        "walk_in_name": { "type": "string" },
+        "customer_phone": { "type": "string" },
+        "service_id": { "type": "string" },
+        "source": { "type": "string", "enum": ["ONLINE", "WALK_IN"] },
+        "status": { "type": "string", "enum": ["WAITING", "IN_PROGRESS", "COMPLETED", "SKIPPED"] },
+        "start_time": { "type": "string" },
+        "end_time": { "type": "string" },
+        "created_at": { "type": "string" },
+        "notes": { "type": "string" }
+      },
+      "required": ["queue_date", "queue_number", "service_id", "source", "status", "created_at"]
+    },
+    "master_hpp": {
+      "title": "MasterHPP",
+      "description": "Cost items for HPP calculation",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "item_name": { "type": "string" },
+        "unit_cost": { "type": "number" },
+        "unit_type": { "type": "string" },
+        "updated_at": { "type": "string" }
+      },
+      "required": ["item_name", "unit_cost", "unit_type"]
+    },
+    "services": {
+      "title": "Service",
+      "description": "Barbershop services menu and recipes",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "service_name": { "type": "string" },
+        "selling_price": { "type": "number" },
+        "duration_mins": { "type": "number" },
+        "is_active": { "type": "boolean" },
+        "description": { "type": "string" }
+      },
+      "required": ["service_name", "selling_price", "duration_mins", "is_active"]
+    },
+    "service_hpp_relations": {
+      "title": "ServiceHPPRelation",
+      "description": "Recipe linking service to HPP items",
+      "type": "object",
+      "properties": {
+        "service_id": { "type": "string" },
+        "hpp_id": { "type": "string" },
+        "quantity_used": { "type": "number" }
+      },
+      "required": ["service_id", "hpp_id", "quantity_used"]
+    },
+    "transactions": {
+      "title": "Transaction",
+      "description": "POS checkout records with financial breakdown",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "queue_id": { "type": "string" },
+        "customer_name": { "type": "string" },
+        "service_name": { "type": "string" },
+        "total_price": { "type": "number" },
+        "discount": { "type": "number" },
+        "tax": { "type": "number" },
+        "total_hpp": { "type": "number" },
+        "net_profit": { "type": "number" },
+        "payment_method": { "type": "string", "enum": ["CASH", "QRIS", "DEBIT", "TRANSFER"] },
+        "created_at": { "type": "string" }
+      },
+      "required": ["customer_name", "service_name", "total_price", "total_hpp", "net_profit", "payment_method", "created_at"]
+    },
+    "notifications": {
+      "title": "NotificationLog",
+      "description": "Push and queue notifications",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "user_id": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string" },
+        "created_at": { "type": "string" },
+        "read": { "type": "boolean" }
+      },
+      "required": ["user_id", "title", "message", "type", "created_at", "read"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/users" },
+      "description": "User profiles and permissions"
+    },
+    "/queues/{queueId}": {
+      "schema": { "$ref": "#/entities/queues" },
+      "description": "Real-time queue records"
+    },
+    "/master_hpp/{hppId}": {
+      "schema": { "$ref": "#/entities/master_hpp" },
+      "description": "Master HPP unit costs"
+    },
+    "/services/{serviceId}": {
+      "schema": { "$ref": "#/entities/services" },
+      "description": "Service catalog"
+    },
+    "/service_hpp_relations/{relationId}": {
+      "schema": { "$ref": "#/entities/service_hpp_relations" },
+      "description": "Service HPP recipe ratios"
+    },
+    "/transactions/{transactionId}": {
+      "schema": { "$ref": "#/entities/transactions" },
+      "description": "POS financial records"
+    },
+    "/notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/notifications" },
+      "description": "User notifications"
+    }
+  }
+}

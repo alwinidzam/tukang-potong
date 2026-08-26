@@ -1,0 +1,212 @@
+{
+  "users": [
+    {
+      "password_hash": "8900946ba025d2014c5c112063ca73aa:b8cb9abb716fccf3eb38d0283d6f69651ac0205b24aabb38c1275f15ffd7435d05ca27e01a9d97dbf69547236684f686254ed78f0dc4420ac094789cbaadd680",
+      "full_name": "Arezky (CEO Arez Barbershop)",
+      "username": "CEO POTONG",
+      "email": "owner@arezbarbershop.com",
+      "role": "OWNER",
+      "id": "usr-admin",
+      "total_visits": 0,
+      "created_at": "2026-06-27T08:55:38.226Z",
+      "phone": "081288990011",
+      "last_visit_at": null,
+      "status": "ACTIVE"
+    }
+  ],
+  "master_hpp": [
+    {
+      "item_name": "Pisau Cukur Silet Platinum (Sekali Pakai)",
+      "unit_type": "pcs",
+      "unit_cost": 1500,
+      "updated_at": "2026-08-26T08:55:38.217Z",
+      "id": "hpp-1"
+    },
+    {
+      "id": "hpp-2",
+      "item_name": "Pomade Waterbased / Matte Clay Premium",
+      "updated_at": "2026-08-26T08:55:38.217Z",
+      "unit_type": "10g",
+      "unit_cost": 3000
+    },
+    {
+      "id": "hpp-3",
+      "updated_at": "2026-08-26T08:55:38.217Z",
+      "unit_cost": 1200,
+      "unit_type": "porsi",
+      "item_name": "Shaving Cream & Foam Anti-Iritasi"
+    },
+    {
+      "updated_at": "2026-08-26T08:55:38.217Z",
+      "item_name": "Neck Paper & Tissue Leher Steril",
+      "id": "hpp-4",
+      "unit_type": "pcs",
+      "unit_cost": 600
+    },
+    {
+      "item_name": "Tonic & Hair Serum Nutrisi",
+      "id": "hpp-5",
+      "unit_type": "ml",
+      "updated_at": "2026-08-26T08:55:38.217Z",
+      "unit_cost": 2000
+    },
+    {
+      "updated_at": "2026-08-26T08:55:38.217Z",
+      "item_name": "Listrik, AC & Clipper Sterilizer (Proporsional)",
+      "unit_type": "sesi",
+      "unit_cost": 2500,
+      "id": "hpp-6"
+    },
+    {
+      "unit_cost": 1800,
+      "unit_type": "sesi",
+      "item_name": "Handuk Hangat & Essential Oil Wash",
+      "id": "hpp-7",
+      "updated_at": "2026-08-26T08:55:38.217Z"
+    }
+  ],
+  "services": [
+    {
+      "is_active": true,
+      "selling_price": 50000,
+      "duration_mins": 18,
+      "description": "Potong presisi, cuci rambut, styling pomade & hot towel finish",
+      "id": "srv-1",
+      "service_name": "Signature Haircut (Standard)"
+    },
+    {
+      "duration_mins": 18,
+      "is_active": true,
+      "id": "srv-2",
+      "selling_price": 75000,
+      "description": "Haircut eksklusif, hair wash, scalp massage, hair tonic & styling",
+      "service_name": "Gentlemen Executive Cut + Wash + Tonic"
+    },
+    {
+      "selling_price": 40000,
+      "service_name": "Beard Trim & Precision Shave",
+      "id": "srv-3",
+      "duration_mins": 18,
+      "is_active": true,
+      "description": "Rapikan jenggot, kumis, shaving dengan foam hangat & razor tajam"
+    },
+    {
+      "selling_price": 110000,
+      "duration_mins": 18,
+      "description": "Paket lengkap perawatan pria premium",
+      "service_name": "The Ultimate Grooming (Cut + Shave + Facial Wash)",
+      "is_active": true,
+      "id": "srv-4"
+    }
+  ],
+  "service_hpp_relations": [
+    {
+      "service_id": "srv-1",
+      "hpp_id": "hpp-1",
+      "quantity_used": 1
+    },
+    {
+      "hpp_id": "hpp-2",
+      "service_id": "srv-1",
+      "quantity_used": 1
+    },
+    {
+      "hpp_id": "hpp-4",
+      "quantity_used": 1,
+      "service_id": "srv-1"
+    },
+    {
+      "service_id": "srv-1",
+      "quantity_used": 1,
+      "hpp_id": "hpp-6"
+    },
+    {
+      "quantity_used": 1,
+      "service_id": "srv-2",
+      "hpp_id": "hpp-1"
+    },
+    {
+      "service_id": "srv-2",
+      "quantity_used": 1,
+      "hpp_id": "hpp-2"
+    },
+    {
+      "quantity_used": 1,
+      "service_id": "srv-2",
+      "hpp_id": "hpp-4"
+    },
+    {
+      "quantity_used": 1,
+      "service_id": "srv-2",
+      "hpp_id": "hpp-5"
+    },
+    {
+      "quantity_used": 1,
+      "service_id": "srv-2",
+      "hpp_id": "hpp-6"
+    },
+    {
+      "hpp_id": "hpp-7",
+      "quantity_used": 1,
+      "service_id": "srv-2"
+    },
+    {
+      "service_id": "srv-3",
+      "hpp_id": "hpp-1",
+      "quantity_used": 1
+    },
+    {
+      "quantity_used": 1,
+      "hpp_id": "hpp-3",
+      "service_id": "srv-3"
+    },
+    {
+      "hpp_id": "hpp-4",
+      "quantity_used": 1,
+      "service_id": "srv-3"
+    },
+    {
+      "quantity_used": 1,
+      "service_id": "srv-3",
+      "hpp_id": "hpp-6"
+    },
+    {
+      "quantity_used": 1,
+      "service_id": "srv-4",
+      "hpp_id": "hpp-1"
+    },
+    {
+      "service_id": "srv-4",
+      "quantity_used": 1,
+      "hpp_id": "hpp-2"
+    },
+    {
+      "service_id": "srv-4",
+      "hpp_id": "hpp-3",
+      "quantity_used": 1
+    },
+    {
+      "hpp_id": "hpp-4",
+      "service_id": "srv-4",
+      "quantity_used": 1
+    },
+    {
+      "quantity_used": 1,
+      "hpp_id": "hpp-5",
+      "service_id": "srv-4"
+    },
+    {
+      "hpp_id": "hpp-6",
+      "quantity_used": 1,
+      "service_id": "srv-4"
+    },
+    {
+      "service_id": "srv-4",
+      "quantity_used": 1,
+      "hpp_id": "hpp-7"
+    }
+  ],
+  "queues": [],
+  "transactions": [],
+  "notifications": []
+}

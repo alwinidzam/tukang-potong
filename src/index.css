@@ -1,0 +1,253 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
+
+    /* Color Palette - Quiet Luxury Barber Aesthetic */
+    --color-bg: #F7F6F2;
+    --color-surface: #FFFFFF;
+    --color-surface-soft: #F1F1EC;
+    --color-elevated: #FFFFFF;
+
+    --color-text: #20231F;
+    --color-text-secondary: #686D66;
+    --color-text-muted: #92968F;
+
+    --color-primary: #26362E;
+    --color-primary-hover: #1A2620;
+    --color-primary-soft: #E8ECE8;
+
+    --color-accent: #A47C45;
+    --color-accent-soft: #F7F2EA;
+
+    --color-border: #E5E5DF;
+    --color-border-subtle: #ECECE6;
+
+    --color-success: #4F7A5A;
+    --color-warning: #A97932;
+    --color-danger: #A84B45;
+
+    /* Spacing System */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-7: 32px;
+
+    /* Border Radius System */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+
+    /* Component Dimensions */
+    --header-height: 56px;
+    --bottom-nav-height: 62px;
+    --touch-target: 44px;
+    --max-app-width: 680px;
+  }
+
+  /* Universal Layout & Anti-Overflow Rules */
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+    margin: 0;
+  }
+
+  html, body {
+    overscroll-behavior: none; /* matikan bounce & pull-to-refresh */
+    -webkit-overflow-scrolling: touch;
+    touch-action: manipulation; /* cegah double-tap zoom */
+    height: 100%;
+  }
+
+  html,
+  body,
+  #root,
+  #arez-barbershop-root {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: hidden;
+    background-color: var(--color-bg);
+    color: var(--color-text);
+  }
+
+  body {
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+    letter-spacing: -0.01em;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    padding-top: var(--safe-top);
+    padding-bottom: var(--safe-bottom);
+    padding-left: var(--safe-left);
+    padding-right: var(--safe-right);
+    -webkit-user-select: none;
+    user-select: none; /* UI tidak bisa di-select seperti native */
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* izinkan select untuk konten yang memang perlu di-copy */
+  .selectable-text,
+  input,
+  textarea {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+
+  img, .icon {
+    -webkit-user-drag: none;
+    user-drag: none;
+    -webkit-touch-callout: none; /* cegah long-press context menu */
+  }
+
+  button, .btn, a.btn {
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.08s ease, opacity 0.08s ease;
+  }
+  button:active, .btn:active {
+    transform: scale(0.96);
+    opacity: 0.85;
+  }
+
+  /* Responsive Display Typography */
+  .font-display {
+    font-family: 'Newsreader', Georgia, serif;
+    letter-spacing: -0.02em;
+  }
+
+  .font-heading {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    letter-spacing: -0.02em;
+  }
+
+  /* Interactive Elements Touch Target & Feel */
+  button,
+  a,
+  input,
+  select,
+  textarea,
+  [role="button"] {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* Custom Minimalist Native-Feel Scrollbars */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #DDD9D0;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #A08052;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Mobile Safe-Area Utilities */
+.safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Native Mobile Bottom Sheet */
+.mobile-sheet {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 100;
+  max-height: min(85dvh, 720px);
+  background: var(--color-surface, #FFFFFF);
+  border-radius: 20px 20px 0 0;
+  padding: 12px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  transform: translateY(100%);
+  transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: 0 -8px 32px rgba(32, 35, 31, 0.12);
+}
+
+.mobile-sheet[data-open="true"] {
+  transform: translateY(0);
+}
+
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+  background: rgb(0 0 0 / 0.38);
+  backdrop-filter: blur(2px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+}
+
+.sheet-backdrop[data-open="true"] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Splash screen */
+#app-splash {
+  position: fixed;
+  inset: 0;
+  background: #0d0d0d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  transition: opacity 0.4s ease;
+}
+
+#app-splash.hide {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Thermal POS Receipt Print Styles */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #receipt-printable-area, #receipt-printable-area * {
+    visibility: visible;
+  }
+  #receipt-printable-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 80mm;
+    margin: 0;
+    padding: 10px;
+    background: white;
+    color: black;
+  }
+}

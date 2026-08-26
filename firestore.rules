@@ -1,0 +1,49 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users Collection
+    match /users/{userId} {
+      allow read, write: if true;
+    }
+
+    // Queues & Real-time Live Pipeline
+    match /queues/{queueId} {
+      allow read, write: if true;
+    }
+
+    // Services Catalog & Pricing
+    match /services/{serviceId} {
+      allow read, write: if true;
+    }
+
+    // Service HPP Relations & Formula Recipes
+    match /service_hpp_relations/{relationId} {
+      allow read, write: if true;
+    }
+
+    // Master HPP Unit Costs
+    match /master_hpp/{hppId} {
+      allow read, write: if true;
+    }
+
+    // Transactions & POS History
+    match /transactions/{transactionId} {
+      allow read, write: if true;
+    }
+
+    // Notifications & Alert Logs
+    match /notifications/{notificationId} {
+      allow read, write: if true;
+    }
+
+    // HPP & Sensitive Financials
+    match /hpp/{hppId} {
+      allow read, write: if true;
+    }
+
+    // Default Fallback
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}
