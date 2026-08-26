@@ -21,6 +21,10 @@ import {
   deleteSingleHPPFromFirestore,
   syncSingleServiceToFirestore,
   deleteSingleServiceFromFirestore,
+  syncSingleUserToFirestore,
+  deleteSingleUserFromFirestore,
+  syncSingleTransactionToFirestore,
+  syncSingleNotificationToFirestore,
 } from './firebase-admin.js';
 
 const router = Router();
@@ -303,7 +307,7 @@ router.post('/auth/owner-login', (req: Request, res: Response) => {
 });
 
 // POST /api/auth/google-sso: Customer Authentication (Enforces Customer Role, Prevents Privilege Escalation)
-router.post('/auth/google-sso', (req: Request, res: Response) => {
+router.post('/auth/google-sso', async (req: Request, res: Response) => {
   const { google_id, email, full_name, avatar_url, phone } = req.body;
 
   if (!email || !full_name || typeof email !== 'string' || typeof full_name !== 'string') {
@@ -344,7 +348,8 @@ router.post('/auth/google-sso', (req: Request, res: Response) => {
     user.updated_at = new Date().toISOString();
   }
 
-  db.saveData();
+  await db.saveDataAsync();
+  await syncSingleUserToFirestore(user);
 
   // Create authenticated session
   const session = createSession(user.id, user.role);
@@ -404,7 +409,7 @@ router.get('/users/staff', requireRole('OWNER'), (req: AuthenticatedRequest, res
 });
 
 // POST /api/users/staff: Create new STAFF account
-router.post('/users/staff', requireRole('OWNER'), (req: AuthenticatedRequest, res: Response) => {
+router.post('/users/staff', requireRole('OWNER'), async (req: AuthenticatedRequest, res: Response) => {
   const { full_name, username, email, phone, password, status } = req.body;
 
   if (!full_name || typeof full_name !== 'string' || !full_name.trim()) {
@@ -457,10 +462,9 @@ router.post('/users/staff', requireRole('OWNER'), (req: AuthenticatedRequest, re
   };
 
   data.users.push(newStaff);
-  db.saveData();
 
   // Audit Log in Notifications
-  data.notifications.unshift({
+  const staffNotif: NotificationLog = {
     id: `notif-staff-${Date.now()}`,
     user_id: req.user!.id,
     title: 'Akun Staff Dibuat',
@@ -468,7 +472,12 @@ router.post('/users/staff', requireRole('OWNER'), (req: AuthenticatedRequest, re
     type: 'SYSTEM',
     read: false,
     created_at: now,
-  });
+  };
+  data.notifications.unshift(staffNotif);
+
+  await db.saveDataAsync();
+  await syncSingleUserToFirestore(newStaff);
+  await syncSingleNotificationToFirestore(staffNotif);
 
   broadcastSSE('STAFF_UPDATED', { action: 'CREATED', staff: sanitizeUser(newStaff) });
 
@@ -493,7 +502,7 @@ router.get('/users/staff/:id', requireRole('OWNER'), (req: AuthenticatedRequest,
 });
 
 // PATCH /api/users/staff/:id: Update staff account information
-router.patch('/users/staff/:id', requireRole('OWNER'), (req: AuthenticatedRequest, res: Response) => {
+router.patch('/users/staff/:id', requireRole('OWNER'), async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
   const { full_name, username, email, phone, status } = req.body;
 
@@ -543,7 +552,8 @@ router.patch('/users/staff/:id', requireRole('OWNER'), (req: AuthenticatedReques
   }
 
   user.updated_at = new Date().toISOString();
-  db.saveData();
+  await db.saveDataAsync();
+  await syncSingleUserToFirestore(user);
 
   broadcastSSE('STAFF_UPDATED', { action: 'UPDATED', staff: sanitizeUser(user) });
 
@@ -555,7 +565,7 @@ router.patch('/users/staff/:id', requireRole('OWNER'), (req: AuthenticatedReques
 });
 
 // PATCH /api/users/staff/:id/status: Toggle or set staff active/inactive status
-router.patch('/users/staff/:id/status', requireRole('OWNER'), (req: AuthenticatedRequest, res: Response) => {
+router.patch('/users/staff/:id/status', requireRole('OWNER'), async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
   const { status } = req.body;
 
@@ -577,7 +587,8 @@ router.patch('/users/staff/:id/status', requireRole('OWNER'), (req: Authenticate
 
   user.status = status;
   user.updated_at = new Date().toISOString();
-  db.saveData();
+  await db.saveDataAsync();
+  await syncSingleUserToFirestore(user);
 
   // If deactivating, invalidate active sessions
   if (status === 'INACTIVE') {
@@ -594,7 +605,7 @@ router.patch('/users/staff/:id/status', requireRole('OWNER'), (req: Authenticate
 });
 
 // POST /api/users/staff/:id/reset-password: Reset staff password
-router.post('/users/staff/:id/reset-password', requireRole('OWNER'), (req: AuthenticatedRequest, res: Response) => {
+router.post('/users/staff/:id/reset-password', requireRole('OWNER'), async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
   const { password } = req.body;
 
@@ -616,7 +627,8 @@ router.post('/users/staff/:id/reset-password', requireRole('OWNER'), (req: Authe
 
   user.password_hash = hashPassword(password);
   user.updated_at = new Date().toISOString();
-  db.saveData();
+  await db.saveDataAsync();
+  await syncSingleUserToFirestore(user);
 
   // Invalidate previous sessions so user re-authenticates with new password
   destroyUserSessions(id);
@@ -628,7 +640,7 @@ router.post('/users/staff/:id/reset-password', requireRole('OWNER'), (req: Authe
 });
 
 // DELETE /api/users/staff/:id: Soft-deactivate staff account (Preserves historical transactions & queues)
-router.delete('/users/staff/:id', requireRole('OWNER'), (req: AuthenticatedRequest, res: Response) => {
+router.delete('/users/staff/:id', requireRole('OWNER'), async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
   const data = db.getData();
   const targetUser = data.users.find(u => u.id === id);
@@ -644,7 +656,8 @@ router.delete('/users/staff/:id', requireRole('OWNER'), (req: AuthenticatedReque
 
   targetUser.status = 'INACTIVE';
   targetUser.updated_at = new Date().toISOString();
-  db.saveData();
+  await db.saveDataAsync();
+  await syncSingleUserToFirestore(targetUser);
 
   // Invalidate any active session for this staff member
   destroyUserSessions(id);
@@ -1321,7 +1334,7 @@ router.get('/transactions', requireRole('OWNER', 'STAFF'), (req: AuthenticatedRe
   res.json(data.transactions);
 });
 
-router.post('/transactions/direct-checkout', requireRole('OWNER', 'STAFF'), (req: AuthenticatedRequest, res: Response) => {
+router.post('/transactions/direct-checkout', requireRole('OWNER', 'STAFF'), async (req: AuthenticatedRequest, res: Response) => {
   const { customer_name, service_id, custom_service_name, selling_price, discount = 0, tax = 0, payment_method = 'CASH' } = req.body;
   const data = db.getData();
 
@@ -1359,7 +1372,8 @@ router.post('/transactions/direct-checkout', requireRole('OWNER', 'STAFF'), (req
   };
 
   data.transactions.unshift(newTx);
-  db.saveData();
+  await db.saveDataAsync();
+  await syncSingleTransactionToFirestore(newTx);
   broadcastSSE('TRANSACTION_CREATED', newTx);
 
   res.status(201).json({ success: true, transaction: newTx });
@@ -1480,7 +1494,7 @@ router.get('/crm/behavior', requireRole('OWNER'), (req: AuthenticatedRequest, re
   });
 });
 
-router.post('/crm/send-retention-push', requireRole('OWNER'), (req: AuthenticatedRequest, res: Response) => {
+router.post('/crm/send-retention-push', requireRole('OWNER'), async (req: AuthenticatedRequest, res: Response) => {
   const { user_id, message } = req.body;
   const data = db.getData();
   const user = data.users.find(u => u.id === user_id);
@@ -1500,7 +1514,8 @@ router.post('/crm/send-retention-push', requireRole('OWNER'), (req: Authenticate
   };
 
   data.notifications.unshift(notif);
-  db.saveData();
+  await db.saveDataAsync();
+  await syncSingleNotificationToFirestore(notif);
   broadcastSSE('NOTIFICATION_SENT', { user: sanitizeUser(user), notification: notif });
 
   res.json({ success: true, notification: notif });

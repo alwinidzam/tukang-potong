@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { User, StaffCreatePayload, StaffUpdatePayload } from '../types';
 import { api } from '../lib/api';
+import { onSnapshot, collection } from 'firebase/firestore';
+import { db as firestoreDb } from '../lib/firebase';
 import {
   Users,
   UserPlus,
@@ -82,6 +84,23 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
 
   useEffect(() => {
     fetchStaffData();
+
+    let unsubscribeUsers: (() => void) | null = null;
+    try {
+      if (firestoreDb) {
+        unsubscribeUsers = onSnapshot(
+          collection(firestoreDb, 'users'),
+          () => {
+            fetchStaffData();
+          },
+          () => {}
+        );
+      }
+    } catch (_) {}
+
+    return () => {
+      unsubscribeUsers?.();
+    };
   }, []);
 
   const showNotification = (msg: string) => {

@@ -160,6 +160,8 @@ export default function App() {
     let unsubscribeNotifs: (() => void) | null = null;
     let unsubscribeHPP: (() => void) | null = null;
     let unsubscribeServices: (() => void) | null = null;
+    let unsubscribeTransactions: (() => void) | null = null;
+    let unsubscribeUsers: (() => void) | null = null;
     let eventSource: EventSource | null = null;
     let sseRetryTimer: any = null;
 
@@ -205,6 +207,22 @@ export default function App() {
           },
           () => {}
         );
+
+        unsubscribeTransactions = onSnapshot(
+          collection(firestoreDb, 'transactions'),
+          () => {
+            loadAllData();
+          },
+          () => {}
+        );
+
+        unsubscribeUsers = onSnapshot(
+          collection(firestoreDb, 'users'),
+          () => {
+            loadAllData();
+          },
+          () => {}
+        );
       }
     } catch (e) {
       console.warn('[Firestore Setup Note]:', e);
@@ -227,7 +245,9 @@ export default function App() {
               parsed.type === 'QUEUE_ADDED' ||
               parsed.type === 'STAFF_UPDATED' ||
               parsed.type === 'HPP_UPDATED' ||
-              parsed.type === 'SERVICES_UPDATED'
+              parsed.type === 'SERVICES_UPDATED' ||
+              parsed.type === 'TRANSACTION_CREATED' ||
+              parsed.type === 'NOTIFICATION_SENT'
             ) {
               loadAllData();
             }
@@ -282,6 +302,8 @@ export default function App() {
       unsubscribeNotifs?.();
       unsubscribeHPP?.();
       unsubscribeServices?.();
+      unsubscribeTransactions?.();
+      unsubscribeUsers?.();
       eventSource?.close();
       clearTimeout(sseRetryTimer);
       window.removeEventListener('visibilitychange', handleVisibilityChange);

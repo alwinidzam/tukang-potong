@@ -207,12 +207,17 @@ export const api = {
   // Queues
   // ----------------------------------------------------------------------
   async getQueues(date?: string): Promise<QueueItem[]> {
-    const url = date ? `${API_BASE}/queues?date=${date}` : `${API_BASE}/queues`;
-    const res = await fetch(url, {
-      headers: getAuthHeaders(),
-      credentials: 'include',
-    });
-    return res.json();
+    try {
+      const url = date ? `${API_BASE}/queues?date=${date}` : `${API_BASE}/queues`;
+      const res = await fetch(url, {
+        headers: getAuthHeaders(),
+        credentials: 'include',
+      });
+      if (!res.ok) return [];
+      return res.json();
+    } catch (_) {
+      return [];
+    }
   },
 
   async createQueue(payload: {
@@ -291,15 +296,16 @@ export const api = {
   // Master HPP (Bahan Baku & Biaya Operasional)
   // ----------------------------------------------------------------------
   async getHPP(): Promise<MasterHPP[]> {
-    const res = await fetch(`${API_BASE}/hpp`, {
-      headers: getAuthHeaders(),
-      credentials: 'include',
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || 'Gagal mengambil data komponen HPP');
+    try {
+      const res = await fetch(`${API_BASE}/hpp`, {
+        headers: getAuthHeaders(),
+        credentials: 'include',
+      });
+      if (!res.ok) return [];
+      return res.json();
+    } catch (_) {
+      return [];
     }
-    return res.json();
   },
 
   async getHPPById(id: string): Promise<MasterHPP & { using_services?: { service_id: string; service_name: string; quantity_used: number }[] }> {
@@ -368,11 +374,16 @@ export const api = {
   // Services
   // ----------------------------------------------------------------------
   async getServices(): Promise<Service[]> {
-    const res = await fetch(`${API_BASE}/services`, {
-      headers: getAuthHeaders(),
-      credentials: 'include',
-    });
-    return res.json();
+    try {
+      const res = await fetch(`${API_BASE}/services`, {
+        headers: getAuthHeaders(),
+        credentials: 'include',
+      });
+      if (!res.ok) return [];
+      return res.json();
+    } catch (_) {
+      return [];
+    }
   },
 
   async createService(payload: {
@@ -421,12 +432,16 @@ export const api = {
   // Transactions & Direct POS
   // ----------------------------------------------------------------------
   async getTransactions(): Promise<Transaction[]> {
-    const res = await fetch(`${API_BASE}/transactions`, {
-      headers: getAuthHeaders(),
-      credentials: 'include',
-    });
-    if (!res.ok) return [];
-    return res.json();
+    try {
+      const res = await fetch(`${API_BASE}/transactions`, {
+        headers: getAuthHeaders(),
+        credentials: 'include',
+      });
+      if (!res.ok) return [];
+      return res.json();
+    } catch (_) {
+      return [];
+    }
   },
 
   async directPOSCheckout(payload: {

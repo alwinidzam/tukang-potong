@@ -276,3 +276,67 @@ export async function deleteSingleServiceFromFirestore(serviceId: string): Promi
     return false;
   }
 }
+
+/**
+ * Instant real-time single User write to Firestore
+ */
+export async function syncSingleUserToFirestore(user: any): Promise<boolean> {
+  const db = getFirestoreDb();
+  if (!db || !user || !user.id) return false;
+  try {
+    const docRef = doc(db, 'users', String(user.id));
+    await setDoc(docRef, user, { merge: true });
+    return true;
+  } catch (e) {
+    console.warn('[Firestore Single User Write Error]:', e);
+    return false;
+  }
+}
+
+/**
+ * Instant real-time single User delete from Firestore
+ */
+export async function deleteSingleUserFromFirestore(userId: string): Promise<boolean> {
+  const db = getFirestoreDb();
+  if (!db || !userId) return false;
+  try {
+    const docRef = doc(db, 'users', String(userId));
+    await deleteDoc(docRef);
+    return true;
+  } catch (e) {
+    console.warn('[Firestore Single User Delete Error]:', e);
+    return false;
+  }
+}
+
+/**
+ * Instant real-time single Transaction write to Firestore
+ */
+export async function syncSingleTransactionToFirestore(transaction: any): Promise<boolean> {
+  const db = getFirestoreDb();
+  if (!db || !transaction || !transaction.id) return false;
+  try {
+    const docRef = doc(db, 'transactions', String(transaction.id));
+    await setDoc(docRef, transaction, { merge: true });
+    return true;
+  } catch (e) {
+    console.warn('[Firestore Single Transaction Write Error]:', e);
+    return false;
+  }
+}
+
+/**
+ * Instant real-time single Notification write to Firestore
+ */
+export async function syncSingleNotificationToFirestore(notif: any): Promise<boolean> {
+  const db = getFirestoreDb();
+  if (!db || !notif || !notif.id) return false;
+  try {
+    const docRef = doc(db, 'notifications', String(notif.id));
+    await setDoc(docRef, notif, { merge: true });
+    return true;
+  } catch (e) {
+    console.warn('[Firestore Single Notification Write Error]:', e);
+    return false;
+  }
+}

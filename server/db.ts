@@ -467,10 +467,13 @@ class Database {
   }
 
   public getNextQueueNumber(dateStr: string): number {
-    const todayQueues = this.data.queues.filter(q => q.queue_date === dateStr);
-    if (todayQueues.length === 0) return 1;
-    const maxNum = Math.max(...todayQueues.map(q => q.queue_number));
-    return maxNum + 1;
+    const todayQueues = (this.data.queues || []).filter(q => q.queue_date === dateStr);
+    const validNums = todayQueues
+      .map(q => Number(q.queue_number))
+      .filter(n => typeof n === 'number' && !isNaN(n) && isFinite(n) && n > 0);
+
+    if (validNums.length === 0) return 1;
+    return Math.max(...validNums) + 1;
   }
 }
 

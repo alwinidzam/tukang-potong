@@ -189,19 +189,19 @@ export const OwnerPOSView: React.FC<OwnerPOSViewProps> = ({
           <div className="min-w-0">
             <span className="text-[10px] text-[#686D66] block leading-none truncate">Omset</span>
             <p className="text-xs sm:text-sm font-semibold text-[#20231F] mt-1 truncate">
-              Rp {dailyRecap ? ((dailyRecap.gross ?? (dailyRecap as any).gross_revenue) ?? 0).toLocaleString('id-ID') : '0'}
+              Rp {(dailyRecap?.gross ?? 0).toLocaleString('id-ID')}
             </p>
           </div>
           <div className="min-w-0">
             <span className="text-[10px] text-[#686D66] block leading-none truncate">Laba Bersih</span>
             <p className="text-xs sm:text-sm font-semibold text-[#4F7A5A] mt-1 truncate">
-              Rp {dailyRecap ? ((dailyRecap.net ?? (dailyRecap as any).net_profit) ?? 0).toLocaleString('id-ID') : '0'}
+              Rp {(dailyRecap?.net ?? 0).toLocaleString('id-ID')}
             </p>
           </div>
           <div className="min-w-0 text-right">
             <span className="text-[10px] text-[#686D66] block leading-none truncate">Selesai</span>
             <p className="text-xs sm:text-sm font-semibold text-[#A47C45] mt-1 truncate">
-              {dailyRecap ? ((dailyRecap.heads ?? (dailyRecap as any).transaction_count) ?? 0) : 0} Sesi
+              {dailyRecap?.heads ?? 0} Sesi
             </p>
           </div>
         </div>
