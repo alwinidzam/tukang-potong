@@ -156,3 +156,35 @@ export async function loadFromFirestore(): Promise<any | null> {
     return null;
   }
 }
+
+/**
+ * Instant real-time single queue write to Firestore
+ */
+export async function syncSingleQueueToFirestore(queue: any): Promise<boolean> {
+  const db = getFirestoreDb();
+  if (!db || !queue || !queue.id) return false;
+  try {
+    const docRef = doc(db, 'queues', String(queue.id));
+    await setDoc(docRef, queue, { merge: true });
+    return true;
+  } catch (e) {
+    console.warn('[Firestore Single Queue Write Error]:', e);
+    return false;
+  }
+}
+
+/**
+ * Instant real-time single queue delete from Firestore
+ */
+export async function deleteSingleQueueFromFirestore(queueId: string): Promise<boolean> {
+  const db = getFirestoreDb();
+  if (!db || !queueId) return false;
+  try {
+    const docRef = doc(db, 'queues', String(queueId));
+    await deleteDoc(docRef);
+    return true;
+  } catch (e) {
+    console.warn('[Firestore Single Queue Delete Error]:', e);
+    return false;
+  }
+}

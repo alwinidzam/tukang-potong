@@ -13,6 +13,7 @@ import {
   isOwnerRole,
   isStaffRole,
 } from './auth.js';
+import { syncSingleQueueToFirestore, deleteSingleQueueFromFirestore } from './firebase-admin.js';
 
 const router = Router();
 
@@ -737,6 +738,7 @@ router.post('/queues', (req: AuthenticatedRequest, res: Response) => {
   }
 
   db.saveData();
+  syncSingleQueueToFirestore(newQueue).catch(() => {});
   broadcastSSE('QUEUE_ADDED', newQueue);
 
   res.status(201).json({ success: true, queue: newQueue });
@@ -769,6 +771,7 @@ router.post('/queues/:id/start', requireRole('OWNER', 'STAFF'), (req: Authentica
   queue.end_time = null;
 
   db.saveData();
+  syncSingleQueueToFirestore(queue).catch(() => {});
   broadcastSSE('QUEUE_STARTED', queue);
 
   res.json({ success: true, queue });
@@ -846,6 +849,7 @@ router.post('/queues/:id/complete', requireRole('OWNER', 'STAFF'), (req: Authent
   data.transactions.unshift(newTx);
 
   db.saveData();
+  syncSingleQueueToFirestore(queue).catch(() => {});
   broadcastSSE('QUEUE_COMPLETED', { queue, transaction: newTx });
 
   res.json({ success: true, queue, transaction: newTx });
@@ -869,6 +873,7 @@ router.post('/queues/:id/skip', requireRole('OWNER', 'STAFF'), (req: Authenticat
     .sort((a, b) => a.queue_number - b.queue_number)[0];
 
   db.saveData();
+  syncSingleQueueToFirestore(queue).catch(() => {});
   broadcastSSE('QUEUE_SKIPPED', { skippedQueue: queue, nextWaiting });
 
   res.json({ success: true, skippedQueue: queue, nextWaiting });
@@ -887,17 +892,13 @@ router.delete('/queues/:id', requireAuth, (req: AuthenticatedRequest, res: Respo
   const targetQueue = data.queues[idx];
 
   // IDOR Verification: Owner & Staff can delete any; Customer can ONLY delete their own queue
-  if (req.user!.role !== 'OWNER' && req.user!.role !== 'STAFF') {
-    if (targetQueue.customer_id !== req.user!.id) {
-      return res.status(403).json({
-        error: 'Akses ditolak: Anda hanya dapat membatalkan tiket antrean milik akun Anda sendiri.',
-        code: 'FORBIDDEN_IDOR',
-      });
-    }
+  if (req.user!.role === 'CUSTOMER' && targetQueue.customer_id !== req.user!.id) {
+    return res.status(403).json({ error: 'Akses ditolak: Anda hanya dapat membatalkan nomor antrean milik Anda sendiri.' });
   }
 
   data.queues.splice(idx, 1);
   db.saveData();
+  deleteSingleQueueFromFirestore(id).catch(() => {});
   broadcastSSE('QUEUE_DELETED', { id });
 
   res.json({ success: true });

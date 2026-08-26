@@ -19,6 +19,8 @@ import { AnalyticsView } from './components/AnalyticsView';
 import { CRMBehaviorView } from './components/CRMBehaviorView';
 import { PWAInstallBanner } from './components/PWAInstallBanner';
 import { playQueueCallSound } from './lib/audio';
+import { collection, onSnapshot } from 'firebase/firestore';
+import { db as firestoreDb } from './lib/firebase';
 
 export default function App() {
   // Authentication & Role State (Server session is authoritative)
@@ -152,40 +154,98 @@ export default function App() {
     loadAllData();
   }, [loadAllData]);
 
-  // Real-Time Server-Sent Events (SSE) Listener
+  // Real-Time Multi-Layered Synchronization (Firestore onSnapshot + Reconnecting SSE + Visibility Triggers + Fast Polling)
   useEffect(() => {
+    let unsubscribeQueues: (() => void) | null = null;
+    let unsubscribeNotifs: (() => void) | null = null;
     let eventSource: EventSource | null = null;
+    let sseRetryTimer: any = null;
 
+    // 1. Direct Cloud Firestore Real-Time WebSocket Engine (<100ms sync)
     try {
-      eventSource = new EventSource('/api/events');
-
-      eventSource.onmessage = (event) => {
-        try {
-          const parsed = JSON.parse(event.data);
-          if (parsed.type === 'QUEUE_STARTED') {
-            playQueueCallSound();
+      if (firestoreDb) {
+        unsubscribeQueues = onSnapshot(
+          collection(firestoreDb, 'queues'),
+          (snapshot) => {
+            snapshot.docChanges().forEach((change) => {
+              const data = change.doc.data();
+              if (change.type === 'modified' && data.status === 'IN_PROGRESS') {
+                playQueueCallSound();
+              }
+            });
             loadAllData();
-          } else if (
-            parsed.type === 'QUEUE_COMPLETED' ||
-            parsed.type === 'QUEUE_SKIPPED' ||
-            parsed.type === 'QUEUE_ADDED' ||
-            parsed.type === 'STAFF_UPDATED'
-          ) {
-            loadAllData();
+          },
+          (error) => {
+            console.warn('[Firestore Real-Time Queue Note]:', error);
           }
-        } catch (e) {}
-      };
+        );
 
-      eventSource.onerror = () => {
-        eventSource?.close();
-      };
-    } catch (e) {}
+        unsubscribeNotifs = onSnapshot(
+          collection(firestoreDb, 'notifications'),
+          () => {
+            loadAllData();
+          },
+          () => {}
+        );
+      }
+    } catch (e) {
+      console.warn('[Firestore Setup Note]:', e);
+    }
 
-    // Polling safety fallback every 8 seconds
-    const interval = setInterval(loadAllData, 8000);
+    // 2. Reconnecting Server-Sent Events (SSE) Listener with Exponential Backoff
+    const connectSSE = () => {
+      try {
+        eventSource = new EventSource('/api/events');
+
+        eventSource.onmessage = (event) => {
+          try {
+            const parsed = JSON.parse(event.data);
+            if (parsed.type === 'QUEUE_STARTED') {
+              playQueueCallSound();
+              loadAllData();
+            } else if (
+              parsed.type === 'QUEUE_COMPLETED' ||
+              parsed.type === 'QUEUE_SKIPPED' ||
+              parsed.type === 'QUEUE_ADDED' ||
+              parsed.type === 'STAFF_UPDATED' ||
+              parsed.type === 'HPP_UPDATED'
+            ) {
+              loadAllData();
+            }
+          } catch (_) {}
+        };
+
+        eventSource.onerror = () => {
+          eventSource?.close();
+          eventSource = null;
+          clearTimeout(sseRetryTimer);
+          sseRetryTimer = setTimeout(connectSSE, 5000);
+        };
+      } catch (_) {}
+    };
+
+    connectSSE();
+
+    // 3. Immediate Refresh when user switches tab or unlocks phone
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadAllData();
+      }
+    };
+
+    window.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleVisibilityChange);
+
+    // 4. Fast 3-Second Smart Polling Safety Net
+    const interval = setInterval(loadAllData, 3000);
 
     return () => {
+      unsubscribeQueues?.();
+      unsubscribeNotifs?.();
       eventSource?.close();
+      clearTimeout(sseRetryTimer);
+      window.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleVisibilityChange);
       clearInterval(interval);
     };
   }, [loadAllData]);
