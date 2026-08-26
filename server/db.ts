@@ -219,10 +219,17 @@ function sanitizeProductionData(raw: DatabaseSchema, existingUsers: User[] = [])
       const u: any = { ...user };
       const roleUpper = String(u.role || '').toUpperCase();
 
-      // Canonical role consolidation: Normalize SUPER_ADMIN / ADMIN / MANAGER to OWNER
-      if (roleUpper === 'SUPER_ADMIN' || roleUpper === 'ADMIN' || roleUpper === 'MANAGER' || roleUpper === 'OWNER') {
+      // STRICT SINGLE OWNER CONSTRAINT:
+      // Only the designated primary account (usr-admin / CEO POTONG) can ever be OWNER
+      const isPrimaryOwner = u.id === 'usr-admin' || (u.username && u.username.toLowerCase() === 'ceo potong');
+      if (isPrimaryOwner) {
+        u.id = 'usr-admin';
         u.role = 'OWNER';
-      } else if (roleUpper === 'CASHIER' || roleUpper === 'BARBER' || roleUpper === 'STAFF') {
+        u.username = process.env.OWNER_USERNAME || 'CEO POTONG';
+        u.full_name = 'Aris (CEO Arez Barbershop)';
+        u.status = 'ACTIVE';
+      } else if (roleUpper === 'STAFF' || roleUpper === 'BARBER' || roleUpper === 'CASHIER' || roleUpper === 'ADMIN' || roleUpper === 'SUPER_ADMIN' || roleUpper === 'MANAGER' || roleUpper === 'OWNER') {
+        // Any other non-primary account automatically and strictly becomes STAFF
         u.role = 'STAFF';
       } else {
         u.role = 'CUSTOMER';
@@ -241,25 +248,34 @@ function sanitizeProductionData(raw: DatabaseSchema, existingUsers: User[] = [])
       }
 
       // Ensure Owner/usr-admin always has valid password hash
-      if ((u.id === 'usr-admin' || u.role === 'OWNER') && !u.password_hash) {
+      if (u.id === 'usr-admin' && !u.password_hash) {
         u.password_hash = hashPasswordInternal(process.env.OWNER_DEFAULT_PASSWORD || 'Arez008');
       }
 
       return u as User;
     });
 
-  // Ensure usr-admin exists as OWNER with valid credentials
-  let adminUser = sanitizedUsers.find(u => u.id === 'usr-admin' || u.role === 'OWNER');
+  // Ensure single usr-admin exists as OWNER with valid credentials
+  let adminUser = sanitizedUsers.find(u => u.id === 'usr-admin');
   if (!adminUser) {
     const defaultSeed = getInitialSeedData();
     sanitizedUsers.push(...defaultSeed.users);
   } else {
     adminUser.role = 'OWNER';
-    if (!adminUser.username) {
-      adminUser.username = process.env.OWNER_USERNAME || 'CEO POTONG';
-    }
+    adminUser.username = process.env.OWNER_USERNAME || 'CEO POTONG';
+    adminUser.full_name = 'Aris (CEO Arez Barbershop)';
     if (!adminUser.password_hash) {
       adminUser.password_hash = hashPasswordInternal(process.env.OWNER_DEFAULT_PASSWORD || 'Arez008');
+    }
+  }
+
+  // Deduplicate users by ID, ensuring usr-admin appears only once
+  const seenIds = new Set<string>();
+  const finalUsers: User[] = [];
+  for (const u of sanitizedUsers) {
+    if (!seenIds.has(u.id)) {
+      seenIds.add(u.id);
+      finalUsers.push(u);
     }
   }
 
@@ -274,7 +290,7 @@ function sanitizeProductionData(raw: DatabaseSchema, existingUsers: User[] = [])
   }));
 
   return {
-    users: sanitizedUsers,
+    users: finalUsers,
     master_hpp: sanitizedHPP,
     services: raw.services || [],
     service_hpp_relations: raw.service_hpp_relations || [],

@@ -259,6 +259,17 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
         </div>
       )}
 
+      {/* Super Admin Single Ownership Policy Badge */}
+      <div className="p-3 bg-[#FFFFFF] border border-[#E5E5DF] rounded-[12px] flex items-start gap-2.5 shadow-[0_2px_8px_rgba(32,35,31,0.02)]">
+        <ShieldCheck className="w-4 h-4 text-[#26362E] shrink-0 mt-0.5" />
+        <div className="min-w-0 text-xs">
+          <p className="font-semibold text-[#20231F]">Struktur Otoritas Akun Arez Barbershop</p>
+          <p className="text-[11px] text-[#686D66] mt-0.5 leading-relaxed">
+            Akun <strong>Super Admin (Owner)</strong> bersifat tunggal dan mutlak (<strong>Aris / CEO POTONG</strong>). Seluruh akun baru yang ditambahkan di bawah ini secara otomatis berstatus <strong>Tim Staf</strong> dengan kewenangan operasional kasir & antrean.
+          </p>
+        </div>
+      </div>
+
       {/* Summary KPI Strip */}
       <div className="grid grid-cols-3 gap-2.5">
         <div className="p-3.5 bg-[#FFFFFF] border border-[#E5E5DF] rounded-[12px] shadow-[0_2px_8px_rgba(32,35,31,0.02)]">
@@ -524,6 +535,13 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
                     className="w-full px-3 py-2 bg-[#FFFFFF] border border-[#E5E5DF] rounded-[8px] text-xs text-[#20231F] focus:outline-none focus:border-[#26362E]"
                   />
                 </div>
+              </div>
+
+              <div className="p-2.5 bg-[#F1F1EC] rounded-[8px] flex items-center justify-between text-xs">
+                <span className="text-[#686D66]">Role Akses:</span>
+                <span className="font-semibold text-[#26362E] bg-[#FFFFFF] px-2 py-0.5 rounded border border-[#E5E5DF]">
+                  STAFF (Operasional Kasir & Antrean)
+                </span>
               </div>
 
               <button
