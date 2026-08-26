@@ -5,6 +5,8 @@ import {
   StaffUpdatePayload,
   QueueItem,
   MasterHPP,
+  MasterHPPCreatePayload,
+  MasterHPPUpdatePayload,
   Service,
   Transaction,
   AnalyticsRecapResponse,
@@ -286,17 +288,31 @@ export const api = {
   },
 
   // ----------------------------------------------------------------------
-  // Master HPP
+  // Master HPP (Bahan Baku & Biaya Operasional)
   // ----------------------------------------------------------------------
   async getHPP(): Promise<MasterHPP[]> {
     const res = await fetch(`${API_BASE}/hpp`, {
       headers: getAuthHeaders(),
       credentials: 'include',
     });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Gagal mengambil data komponen HPP');
+    }
     return res.json();
   },
 
-  async createHPP(payload: { item_name: string; unit_cost: number; unit_type: string }): Promise<{ success: boolean; item: MasterHPP }> {
+  async getHPPById(id: string): Promise<MasterHPP & { using_services?: { service_id: string; service_name: string; quantity_used: number }[] }> {
+    const res = await fetch(`${API_BASE}/hpp/${id}`, {
+      headers: getAuthHeaders(),
+      credentials: 'include',
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Gagal mengambil detail komponen HPP');
+    return data;
+  },
+
+  async createHPP(payload: MasterHPPCreatePayload): Promise<{ success: boolean; item: MasterHPP; message?: string }> {
     const res = await fetch(`${API_BASE}/hpp`, {
       method: 'POST',
       headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
@@ -304,11 +320,11 @@ export const api = {
       credentials: 'include',
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Gagal menambah HPP');
+    if (!res.ok) throw new Error(data.error || 'Gagal menambah komponen HPP');
     return data;
   },
 
-  async updateHPP(id: string, payload: { item_name?: string; unit_cost?: number; unit_type?: string }): Promise<{ success: boolean; item: MasterHPP }> {
+  async updateHPP(id: string, payload: MasterHPPUpdatePayload): Promise<{ success: boolean; item: MasterHPP; message?: string }> {
     const res = await fetch(`${API_BASE}/hpp/${id}`, {
       method: 'PUT',
       headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
@@ -316,18 +332,35 @@ export const api = {
       credentials: 'include',
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Gagal update HPP');
+    if (!res.ok) throw new Error(data.error || 'Gagal memperbarui komponen HPP');
     return data;
   },
 
-  async deleteHPP(id: string): Promise<{ success: boolean }> {
-    const res = await fetch(`${API_BASE}/hpp/${id}`, {
+  async toggleHPPStatus(id: string, is_active: boolean): Promise<{ success: boolean; item: MasterHPP; message?: string }> {
+    const res = await fetch(`${API_BASE}/hpp/${id}/status`, {
+      method: 'PATCH',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ is_active }),
+      credentials: 'include',
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Gagal mengubah status komponen HPP');
+    return data;
+  },
+
+  async deleteHPP(id: string, force = false): Promise<{ success: boolean; message?: string; requires_confirmation?: boolean; error?: string; used_in_services_count?: number; service_names?: string[] }> {
+    const res = await fetch(`${API_BASE}/hpp/${id}${force ? '?force=true' : ''}`, {
       method: 'DELETE',
       headers: getAuthHeaders(),
       credentials: 'include',
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Gagal menghapus komponen HPP');
+    if (!res.ok) {
+      if (res.status === 409 && data.requires_confirmation) {
+        return data;
+      }
+      throw new Error(data.error || 'Gagal menghapus komponen HPP');
+    }
     return data;
   },
 

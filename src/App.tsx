@@ -247,14 +247,7 @@ export default function App() {
             {activeTab === 'staff' && (
               <UserManagement currentUser={currentUser} />
             )}
-            {activeTab === 'hpp' && (
-              <HPPManagement
-                hppList={hppList}
-                services={services}
-                onRefreshData={loadAllData}
-              />
-            )}
-            {activeTab === 'services' && (
+            {(activeTab === 'services' || activeTab === 'hpp') && (
               <ServicesView
                 services={services}
                 hppList={hppList}

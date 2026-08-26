@@ -16,52 +16,66 @@
   ],
   "master_hpp": [
     {
+      "id": "hpp-1",
       "item_name": "Pisau Cukur Silet Platinum (Sekali Pakai)",
-      "unit_type": "pcs",
       "unit_cost": 1500,
-      "updated_at": "2026-08-26T08:55:38.217Z",
-      "id": "hpp-1"
+      "unit_type": "pcs",
+      "category": "Bahan Baku & Steril",
+      "is_active": true,
+      "updated_at": "2026-08-26T08:55:38.217Z"
     },
     {
       "id": "hpp-2",
       "item_name": "Pomade Waterbased / Matte Clay Premium",
-      "updated_at": "2026-08-26T08:55:38.217Z",
+      "unit_cost": 3000,
       "unit_type": "10g",
-      "unit_cost": 3000
+      "category": "Styling & Perawatan",
+      "is_active": true,
+      "updated_at": "2026-08-26T08:55:38.217Z"
     },
     {
       "id": "hpp-3",
-      "updated_at": "2026-08-26T08:55:38.217Z",
+      "item_name": "Shaving Cream & Foam Anti-Iritasi",
       "unit_cost": 1200,
       "unit_type": "porsi",
-      "item_name": "Shaving Cream & Foam Anti-Iritasi"
+      "category": "Bahan Baku & Steril",
+      "is_active": true,
+      "updated_at": "2026-08-26T08:55:38.217Z"
     },
     {
-      "updated_at": "2026-08-26T08:55:38.217Z",
-      "item_name": "Neck Paper & Tissue Leher Steril",
       "id": "hpp-4",
+      "item_name": "Neck Paper & Tissue Leher Steril",
+      "unit_cost": 600,
       "unit_type": "pcs",
-      "unit_cost": 600
+      "category": "Bahan Baku & Steril",
+      "is_active": true,
+      "updated_at": "2026-08-26T08:55:38.217Z"
     },
     {
-      "item_name": "Tonic & Hair Serum Nutrisi",
       "id": "hpp-5",
+      "item_name": "Tonic & Hair Serum Nutrisi",
+      "unit_cost": 2000,
       "unit_type": "ml",
-      "updated_at": "2026-08-26T08:55:38.217Z",
-      "unit_cost": 2000
+      "category": "Styling & Perawatan",
+      "is_active": true,
+      "updated_at": "2026-08-26T08:55:38.217Z"
     },
     {
-      "updated_at": "2026-08-26T08:55:38.217Z",
+      "id": "hpp-6",
       "item_name": "Listrik, AC & Clipper Sterilizer (Proporsional)",
-      "unit_type": "sesi",
       "unit_cost": 2500,
-      "id": "hpp-6"
+      "unit_type": "sesi",
+      "category": "Operasional & Utilitas",
+      "is_active": true,
+      "updated_at": "2026-08-26T08:55:38.217Z"
     },
     {
+      "id": "hpp-7",
+      "item_name": "Handuk Hangat & Essential Oil Wash",
       "unit_cost": 1800,
       "unit_type": "sesi",
-      "item_name": "Handuk Hangat & Essential Oil Wash",
-      "id": "hpp-7",
+      "category": "Bahan Baku & Steril",
+      "is_active": true,
       "updated_at": "2026-08-26T08:55:38.217Z"
     }
   ],

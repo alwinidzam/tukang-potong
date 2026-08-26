@@ -54,7 +54,30 @@ export interface MasterHPP {
   item_name: string;
   unit_cost: number;
   unit_type: string;
+  category?: string;
+  is_active?: boolean;
+  description?: string;
+  created_at?: string;
   updated_at: string;
+  used_in_services_count?: number;
+}
+
+export interface MasterHPPCreatePayload {
+  item_name: string;
+  unit_cost: number;
+  unit_type: string;
+  category?: string;
+  is_active?: boolean;
+  description?: string;
+}
+
+export interface MasterHPPUpdatePayload {
+  item_name?: string;
+  unit_cost?: number;
+  unit_type?: string;
+  category?: string;
+  is_active?: boolean;
+  description?: string;
 }
 
 export interface ServiceHPPBreakdown {

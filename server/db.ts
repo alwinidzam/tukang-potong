@@ -33,6 +33,10 @@ export interface MasterHPP {
   item_name: string;
   unit_cost: number;
   unit_type: string;
+  category?: string;
+  is_active?: boolean;
+  description?: string;
+  created_at?: string;
   updated_at: string;
 }
 
@@ -120,13 +124,13 @@ const getInitialSeedData = (): DatabaseSchema => {
   const ownerPassword = process.env.OWNER_DEFAULT_PASSWORD || 'Arez008';
 
   const master_hpp: MasterHPP[] = [
-    { id: 'hpp-1', item_name: 'Pisau Cukur Silet Platinum (Sekali Pakai)', unit_cost: 1500, unit_type: 'pcs', updated_at: now.toISOString() },
-    { id: 'hpp-2', item_name: 'Pomade Waterbased / Matte Clay Premium', unit_cost: 3000, unit_type: '10g', updated_at: now.toISOString() },
-    { id: 'hpp-3', item_name: 'Shaving Cream & Foam Anti-Iritasi', unit_cost: 1200, unit_type: 'porsi', updated_at: now.toISOString() },
-    { id: 'hpp-4', item_name: 'Neck Paper & Tissue Leher Steril', unit_cost: 600, unit_type: 'pcs', updated_at: now.toISOString() },
-    { id: 'hpp-5', item_name: 'Tonic & Hair Serum Nutrisi', unit_cost: 2000, unit_type: 'ml', updated_at: now.toISOString() },
-    { id: 'hpp-6', item_name: 'Listrik, AC & Clipper Sterilizer (Proporsional)', unit_cost: 2500, unit_type: 'sesi', updated_at: now.toISOString() },
-    { id: 'hpp-7', item_name: 'Handuk Hangat & Essential Oil Wash', unit_cost: 1800, unit_type: 'sesi', updated_at: now.toISOString() },
+    { id: 'hpp-1', item_name: 'Pisau Cukur Silet Platinum (Sekali Pakai)', unit_cost: 1500, unit_type: 'pcs', category: 'Bahan Baku & Steril', is_active: true, updated_at: now.toISOString() },
+    { id: 'hpp-2', item_name: 'Pomade Waterbased / Matte Clay Premium', unit_cost: 3000, unit_type: '10g', category: 'Styling & Perawatan', is_active: true, updated_at: now.toISOString() },
+    { id: 'hpp-3', item_name: 'Shaving Cream & Foam Anti-Iritasi', unit_cost: 1200, unit_type: 'porsi', category: 'Bahan Baku & Steril', is_active: true, updated_at: now.toISOString() },
+    { id: 'hpp-4', item_name: 'Neck Paper & Tissue Leher Steril', unit_cost: 600, unit_type: 'pcs', category: 'Bahan Baku & Steril', is_active: true, updated_at: now.toISOString() },
+    { id: 'hpp-5', item_name: 'Tonic & Hair Serum Nutrisi', unit_cost: 2000, unit_type: 'ml', category: 'Styling & Perawatan', is_active: true, updated_at: now.toISOString() },
+    { id: 'hpp-6', item_name: 'Listrik, AC & Clipper Sterilizer (Proporsional)', unit_cost: 2500, unit_type: 'sesi', category: 'Operasional & Utilitas', is_active: true, updated_at: now.toISOString() },
+    { id: 'hpp-7', item_name: 'Handuk Hangat & Essential Oil Wash', unit_cost: 1800, unit_type: 'sesi', category: 'Bahan Baku & Steril', is_active: true, updated_at: now.toISOString() },
   ];
 
   const services: Service[] = [
@@ -263,9 +267,15 @@ function sanitizeProductionData(raw: DatabaseSchema, existingUsers: User[] = [])
   const sanitizedTransactions = (raw.transactions || []).filter(t => !dummyTrxIds.has(t.id));
   const sanitizedNotifs = (raw.notifications || []).filter(n => !dummyNotifIds.has(n.id) && !dummyUserIds.has(n.user_id || ''));
 
+  const sanitizedHPP = (raw.master_hpp || []).map(h => ({
+    ...h,
+    category: h.category || 'Bahan Baku & Steril',
+    is_active: h.is_active !== false,
+  }));
+
   return {
     users: sanitizedUsers,
-    master_hpp: raw.master_hpp || [],
+    master_hpp: sanitizedHPP,
     services: raw.services || [],
     service_hpp_relations: raw.service_hpp_relations || [],
     queues: sanitizedQueues,

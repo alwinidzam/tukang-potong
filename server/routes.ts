@@ -10,6 +10,8 @@ import {
   destroyUserSessions,
   verifyPassword,
   hashPassword,
+  isOwnerRole,
+  isStaffRole,
 } from './auth.js';
 
 const router = Router();
@@ -95,10 +97,6 @@ setInterval(() => {
   }
 }, 30000);
 
-// Helper to check if a user is in an Owner role
-function isOwnerRole(role?: string): boolean {
-  return role === 'OWNER';
-}
 
 // Helper for sanitized user response
 function sanitizeUser(user: User) {
@@ -906,81 +904,232 @@ router.delete('/queues/:id', requireAuth, (req: AuthenticatedRequest, res: Respo
 });
 
 // -------------------------------------------------------------
-// 4. Master HPP CRUD (Komponen Biaya — Owner Only)
+// 4. Master HPP CRUD (Komponen Biaya — Owner Only for Mutation)
 // -------------------------------------------------------------
 router.get('/hpp', (req: Request, res: Response) => {
   const data = db.getData();
-  res.json(data.master_hpp);
+  const hppWithUsage = (data.master_hpp || []).map(item => {
+    const usedCount = (data.service_hpp_relations || []).filter(r => r.hpp_id === item.id).length;
+    return {
+      ...item,
+      category: item.category || 'Bahan Baku & Steril',
+      is_active: item.is_active !== false,
+      used_in_services_count: usedCount,
+    };
+  });
+  res.json(hppWithUsage);
 });
 
-router.post('/hpp', requireRole('OWNER'), (req: AuthenticatedRequest, res: Response) => {
-  const { item_name, unit_cost, unit_type } = req.body;
-  if (!item_name || typeof item_name !== 'string' || !item_name.trim() || unit_cost === undefined) {
-    return res.status(400).json({ error: 'Nama komponen dan biaya satuan wajib diisi secara valid.' });
-  }
-
-  const numCost = Number(unit_cost);
-  if (isNaN(numCost) || numCost < 0) {
-    return res.status(400).json({ error: 'Biaya satuan harus berupa angka positif.' });
-  }
-
-  const data = db.getData();
-  const newItem: MasterHPP = {
-    id: `hpp-${Date.now()}`,
-    item_name: item_name.trim(),
-    unit_cost: Math.round(numCost),
-    unit_type: typeof unit_type === 'string' && unit_type.trim() ? unit_type.trim() : 'pcs',
-    updated_at: new Date().toISOString(),
-  };
-
-  data.master_hpp.push(newItem);
-  db.saveData();
-  broadcastSSE('HPP_UPDATED', newItem);
-
-  res.status(201).json({ success: true, item: newItem });
-});
-
-router.put('/hpp/:id', requireRole('OWNER'), (req: AuthenticatedRequest, res: Response) => {
+router.get('/hpp/:id', (req: Request, res: Response) => {
   const { id } = req.params;
-  const { item_name, unit_cost, unit_type } = req.body;
   const data = db.getData();
   const item = data.master_hpp.find(h => h.id === id);
 
   if (!item) {
-    return res.status(404).json({ error: 'Komponen HPP tidak ditemukan' });
+    return res.status(404).json({ error: 'Komponen HPP tidak ditemukan.' });
   }
 
-  if (typeof item_name === 'string' && item_name.trim()) item.item_name = item_name.trim();
-  if (unit_cost !== undefined) {
-    const num = Number(unit_cost);
-    if (!isNaN(num) && num >= 0) item.unit_cost = Math.round(num);
-  }
-  if (typeof unit_type === 'string' && unit_type.trim()) item.unit_type = unit_type.trim();
-  item.updated_at = new Date().toISOString();
+  const relations = data.service_hpp_relations.filter(r => r.hpp_id === id);
+  const usingServices = relations.map(r => {
+    const s = data.services.find(srv => srv.id === r.service_id);
+    return {
+      service_id: r.service_id,
+      service_name: s?.service_name || 'Unknown Service',
+      quantity_used: r.quantity_used,
+    };
+  });
 
+  res.json({
+    ...item,
+    category: item.category || 'Bahan Baku & Steril',
+    is_active: item.is_active !== false,
+    used_in_services_count: usingServices.length,
+    using_services: usingServices,
+  });
+});
+
+router.post('/hpp', requireRole('OWNER'), (req: AuthenticatedRequest, res: Response) => {
+  const { item_name, unit_cost, unit_type, category, is_active, description } = req.body;
+
+  if (!item_name || typeof item_name !== 'string' || !item_name.trim()) {
+    return res.status(400).json({ error: 'Nama komponen HPP wajib diisi.' });
+  }
+
+  if (unit_cost === undefined || unit_cost === null) {
+    return res.status(400).json({ error: 'Biaya per satuan wajib diisi.' });
+  }
+
+  const numCost = Number(unit_cost);
+  if (isNaN(numCost) || numCost < 0) {
+    return res.status(400).json({ error: 'Biaya per satuan harus berupa angka tidak negatif.' });
+  }
+
+  const cleanUnitType = typeof unit_type === 'string' && unit_type.trim() ? unit_type.trim() : 'pcs';
+  const cleanCategory = typeof category === 'string' && category.trim() ? category.trim() : 'Bahan Baku & Steril';
+  const cleanDesc = typeof description === 'string' ? description.trim() : '';
+  const now = new Date().toISOString();
+
+  const data = db.getData();
+  const newItem: MasterHPP = {
+    id: `hpp-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    item_name: item_name.trim(),
+    unit_cost: Math.round(numCost),
+    unit_type: cleanUnitType,
+    category: cleanCategory,
+    is_active: is_active !== false,
+    description: cleanDesc,
+    created_at: now,
+    updated_at: now,
+  };
+
+  data.master_hpp.push(newItem);
   db.saveData();
-  broadcastSSE('HPP_UPDATED', item);
+  broadcastSSE('HPP_UPDATED', { action: 'CREATED', item: newItem });
 
-  res.json({ success: true, item });
+  res.status(201).json({
+    success: true,
+    item: {
+      ...newItem,
+      used_in_services_count: 0,
+    },
+    message: `Komponen HPP "${newItem.item_name}" berhasil ditambahkan.`,
+  });
+});
+
+const handleUpdateHPP = (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params;
+  const { item_name, unit_cost, unit_type, category, is_active, description } = req.body;
+  const data = db.getData();
+  const item = data.master_hpp.find(h => h.id === id);
+
+  if (!item) {
+    return res.status(404).json({ error: 'Komponen HPP tidak ditemukan.' });
+  }
+
+  if (typeof item_name === 'string' && item_name.trim()) {
+    item.item_name = item_name.trim();
+  }
+
+  if (unit_cost !== undefined && unit_cost !== null) {
+    const num = Number(unit_cost);
+    if (!isNaN(num) && num >= 0) {
+      item.unit_cost = Math.round(num);
+    } else {
+      return res.status(400).json({ error: 'Biaya per satuan harus berupa angka tidak negatif.' });
+    }
+  }
+
+  if (typeof unit_type === 'string' && unit_type.trim()) {
+    item.unit_type = unit_type.trim();
+  }
+
+  if (typeof category === 'string' && category.trim()) {
+    item.category = category.trim();
+  }
+
+  if (is_active !== undefined) {
+    item.is_active = Boolean(is_active);
+  }
+
+  if (description !== undefined) {
+    item.description = typeof description === 'string' ? description.trim() : '';
+  }
+
+  item.updated_at = new Date().toISOString();
+  db.saveData();
+
+  const usedCount = (data.service_hpp_relations || []).filter(r => r.hpp_id === id).length;
+  const enrichedItem = {
+    ...item,
+    used_in_services_count: usedCount,
+  };
+
+  broadcastSSE('HPP_UPDATED', { action: 'UPDATED', item: enrichedItem });
+
+  res.json({
+    success: true,
+    item: enrichedItem,
+    message: `Komponen HPP "${item.item_name}" berhasil diperbarui.`,
+  });
+};
+
+router.put('/hpp/:id', requireRole('OWNER'), handleUpdateHPP);
+router.patch('/hpp/:id', requireRole('OWNER'), handleUpdateHPP);
+
+router.patch('/hpp/:id/status', requireRole('OWNER'), (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params;
+  const { is_active } = req.body;
+
+  if (is_active === undefined) {
+    return res.status(400).json({ error: 'Status is_active wajib disertakan.' });
+  }
+
+  const data = db.getData();
+  const item = data.master_hpp.find(h => h.id === id);
+
+  if (!item) {
+    return res.status(404).json({ error: 'Komponen HPP tidak ditemukan.' });
+  }
+
+  item.is_active = Boolean(is_active);
+  item.updated_at = new Date().toISOString();
+  db.saveData();
+
+  const usedCount = (data.service_hpp_relations || []).filter(r => r.hpp_id === id).length;
+  const enrichedItem = {
+    ...item,
+    used_in_services_count: usedCount,
+  };
+
+  broadcastSSE('HPP_UPDATED', { action: 'STATUS_CHANGED', item: enrichedItem });
+
+  res.json({
+    success: true,
+    item: enrichedItem,
+    message: `Status komponen "${item.item_name}" diubah menjadi ${item.is_active ? 'Aktif' : 'Nonaktif'}.`,
+  });
 });
 
 router.delete('/hpp/:id', requireRole('OWNER'), (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
+  const force = req.query.force === 'true' || req.body?.force === true;
   const data = db.getData();
   const idx = data.master_hpp.findIndex(h => h.id === id);
 
   if (idx === -1) {
-    return res.status(404).json({ error: 'Komponen HPP tidak ditemukan' });
+    return res.status(404).json({ error: 'Komponen HPP tidak ditemukan.' });
   }
 
-  // Remove relation entries too
-  data.service_hpp_relations = data.service_hpp_relations.filter(r => r.hpp_id !== id);
+  const targetItem = data.master_hpp[idx];
+  const usingRelations = (data.service_hpp_relations || []).filter(r => r.hpp_id === id);
+
+  // If used in active services and not force-deleted, return warning & require confirmation
+  if (usingRelations.length > 0 && !force) {
+    const serviceNames = usingRelations.map(r => {
+      const s = data.services.find(srv => srv.id === r.service_id);
+      return s?.service_name || 'Layanan';
+    });
+
+    return res.status(409).json({
+      error: `Komponen "${targetItem.item_name}" sedang digunakan dalam ${usingRelations.length} resep layanan (${serviceNames.slice(0, 2).join(', ')}${serviceNames.length > 2 ? '...' : ''}).`,
+      requires_confirmation: true,
+      used_in_services_count: usingRelations.length,
+      service_names: serviceNames,
+      recommendation: 'DEACTIVATE',
+    });
+  }
+
+  // Remove relation entries cleanly
+  data.service_hpp_relations = (data.service_hpp_relations || []).filter(r => r.hpp_id !== id);
   data.master_hpp.splice(idx, 1);
 
   db.saveData();
-  broadcastSSE('HPP_UPDATED', { deletedId: id });
+  broadcastSSE('HPP_UPDATED', { action: 'DELETED', deletedId: id });
 
-  res.json({ success: true });
+  res.json({
+    success: true,
+    message: `Komponen HPP "${targetItem.item_name}" berhasil dihapus.`,
+  });
 });
 
 // -------------------------------------------------------------
