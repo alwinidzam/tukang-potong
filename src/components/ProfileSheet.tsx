@@ -28,13 +28,12 @@ interface ProfileSheetProps {
 }
 
 export function getUserInitials(name?: string, role?: string): string {
-  if (!name) return role === 'OWNER' ? 'AK' : 'AZ';
+  if (!name) return role === 'OWNER' ? 'AR' : 'AZ';
   const cleanName = name.replace(/\(.*?\)/g, '').trim();
   const words = cleanName.split(/\s+/).filter(Boolean);
-  if (words.length === 0) return 'AK';
+  if (words.length === 0) return role === 'OWNER' ? 'AR' : 'AZ';
   if (words.length === 1) {
     const single = words[0];
-    if (single.toLowerCase().startsWith('arez')) return 'AK';
     return single.slice(0, 2).toUpperCase();
   }
   return (words[0][0] + words[words.length - 1][0]).toUpperCase();

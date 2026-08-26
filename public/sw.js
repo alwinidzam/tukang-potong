@@ -1,10 +1,14 @@
-const CACHE_NAME = "arez-barbershop-v2";
+const CACHE_NAME = "arez-barbershop-v3";
 const ASSETS_TO_CACHE = [
   "/",
   "/index.html",
   "/manifest.json",
   "/LOGOICONBARU.svg",
-  "/iconappbarber.svg"
+  "/LOGOICONBARU.png",
+  "/icon-192.png",
+  "/icon-512.png",
+  "/apple-touch-icon.png",
+  "/favicon.png"
 ];
 
 self.addEventListener("install", (event) => {

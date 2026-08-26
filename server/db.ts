@@ -170,7 +170,7 @@ const getInitialSeedData = (): DatabaseSchema => {
       status: 'ACTIVE',
       username: process.env.OWNER_USERNAME || 'CEO POTONG',
       password_hash: hashPasswordInternal(ownerPassword),
-      full_name: 'Arezky (CEO Arez Barbershop)',
+      full_name: 'Aris (CEO Arez Barbershop)',
       email: 'owner@arezbarbershop.com',
       phone: '081288990011',
       total_visits: 0,
