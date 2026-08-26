@@ -17,6 +17,10 @@ import {
   syncSingleQueueToFirestore,
   deleteSingleQueueFromFirestore,
   loadQueuesFromFirestore,
+  syncSingleHPPToFirestore,
+  deleteSingleHPPFromFirestore,
+  syncSingleServiceToFirestore,
+  deleteSingleServiceFromFirestore,
 } from './firebase-admin.js';
 
 const router = Router();
@@ -24,6 +28,14 @@ const router = Router();
 // Apply session authentication extractor across all routes
 router.use((req: Request, res: Response, next: NextFunction) => {
   authenticate(req as AuthenticatedRequest, res, next);
+});
+
+// Ensure fresh Cloud Firestore data is available for all requests
+router.use(async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    await db.ensureFreshData();
+  } catch (_) {}
+  next();
 });
 
 // -------------------------------------------------------------
@@ -965,7 +977,7 @@ router.get('/hpp/:id', (req: Request, res: Response) => {
   });
 });
 
-router.post('/hpp', requireRole('OWNER'), (req: AuthenticatedRequest, res: Response) => {
+router.post('/hpp', requireRole('OWNER'), async (req: AuthenticatedRequest, res: Response) => {
   const { item_name, unit_cost, unit_type, category, is_active, description } = req.body;
 
   if (!item_name || typeof item_name !== 'string' || !item_name.trim()) {
@@ -1000,7 +1012,8 @@ router.post('/hpp', requireRole('OWNER'), (req: AuthenticatedRequest, res: Respo
   };
 
   data.master_hpp.push(newItem);
-  db.saveData();
+  await db.saveDataAsync();
+  await syncSingleHPPToFirestore(newItem);
   broadcastSSE('HPP_UPDATED', { action: 'CREATED', item: newItem });
 
   res.status(201).json({
@@ -1013,7 +1026,7 @@ router.post('/hpp', requireRole('OWNER'), (req: AuthenticatedRequest, res: Respo
   });
 });
 
-const handleUpdateHPP = (req: AuthenticatedRequest, res: Response) => {
+const handleUpdateHPP = async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
   const { item_name, unit_cost, unit_type, category, is_active, description } = req.body;
   const data = db.getData();
@@ -1053,7 +1066,8 @@ const handleUpdateHPP = (req: AuthenticatedRequest, res: Response) => {
   }
 
   item.updated_at = new Date().toISOString();
-  db.saveData();
+  await db.saveDataAsync();
+  await syncSingleHPPToFirestore(item);
 
   const usedCount = (data.service_hpp_relations || []).filter(r => r.hpp_id === id).length;
   const enrichedItem = {
@@ -1073,7 +1087,7 @@ const handleUpdateHPP = (req: AuthenticatedRequest, res: Response) => {
 router.put('/hpp/:id', requireRole('OWNER'), handleUpdateHPP);
 router.patch('/hpp/:id', requireRole('OWNER'), handleUpdateHPP);
 
-router.patch('/hpp/:id/status', requireRole('OWNER'), (req: AuthenticatedRequest, res: Response) => {
+router.patch('/hpp/:id/status', requireRole('OWNER'), async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
   const { is_active } = req.body;
 
@@ -1090,7 +1104,8 @@ router.patch('/hpp/:id/status', requireRole('OWNER'), (req: AuthenticatedRequest
 
   item.is_active = Boolean(is_active);
   item.updated_at = new Date().toISOString();
-  db.saveData();
+  await db.saveDataAsync();
+  await syncSingleHPPToFirestore(item);
 
   const usedCount = (data.service_hpp_relations || []).filter(r => r.hpp_id === id).length;
   const enrichedItem = {
@@ -1107,7 +1122,7 @@ router.patch('/hpp/:id/status', requireRole('OWNER'), (req: AuthenticatedRequest
   });
 });
 
-router.delete('/hpp/:id', requireRole('OWNER'), (req: AuthenticatedRequest, res: Response) => {
+router.delete('/hpp/:id', requireRole('OWNER'), async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
   const force = req.query.force === 'true' || req.body?.force === true;
   const data = db.getData();
@@ -1140,7 +1155,8 @@ router.delete('/hpp/:id', requireRole('OWNER'), (req: AuthenticatedRequest, res:
   data.service_hpp_relations = (data.service_hpp_relations || []).filter(r => r.hpp_id !== id);
   data.master_hpp.splice(idx, 1);
 
-  db.saveData();
+  await db.saveDataAsync();
+  await deleteSingleHPPFromFirestore(id);
   broadcastSSE('HPP_UPDATED', { action: 'DELETED', deletedId: id });
 
   res.json({
@@ -1154,11 +1170,11 @@ router.delete('/hpp/:id', requireRole('OWNER'), (req: AuthenticatedRequest, res:
 // -------------------------------------------------------------
 router.get('/services', (req: Request, res: Response) => {
   const data = db.getData();
-  const servicesWithHPP = data.services.map(s => {
-    const relations = data.service_hpp_relations.filter(r => r.service_id === s.id);
+  const servicesWithHPP = (data.services || []).map(s => {
+    const relations = (data.service_hpp_relations || []).filter(r => r.service_id === s.id);
     const hppBreakdown = relations
       .map(r => {
-        const hppItem = data.master_hpp.find(h => h.id === r.hpp_id);
+        const hppItem = (data.master_hpp || []).find(h => h.id === r.hpp_id);
         if (!hppItem) return null;
         return {
           hpp_id: r.hpp_id,
@@ -1187,7 +1203,7 @@ router.get('/services', (req: Request, res: Response) => {
   res.json(servicesWithHPP);
 });
 
-router.post('/services', requireRole('OWNER'), (req: AuthenticatedRequest, res: Response) => {
+router.post('/services', requireRole('OWNER'), async (req: AuthenticatedRequest, res: Response) => {
   const { service_name, selling_price, duration_mins = 18, is_active = true, description, hpp_items } = req.body;
   if (!service_name || typeof service_name !== 'string' || !service_name.trim() || selling_price === undefined) {
     return res.status(400).json({ error: 'Nama layanan dan harga jual wajib diisi.' });
@@ -1211,23 +1227,29 @@ router.post('/services', requireRole('OWNER'), (req: AuthenticatedRequest, res: 
 
   data.services.push(newService);
 
+  const relationsForThisService: any[] = [];
   if (Array.isArray(hpp_items)) {
     for (const item of hpp_items) {
       if (item && item.hpp_id && item.quantity_used) {
-        data.service_hpp_relations.push({
+        const rel = {
           service_id: serviceId,
           hpp_id: item.hpp_id,
           quantity_used: Math.max(1, Number(item.quantity_used) || 1),
-        });
+        };
+        data.service_hpp_relations.push(rel);
+        relationsForThisService.push(rel);
       }
     }
   }
 
-  db.saveData();
+  await db.saveDataAsync();
+  await syncSingleServiceToFirestore(newService, relationsForThisService);
+  broadcastSSE('SERVICES_UPDATED', { action: 'CREATED', service: newService });
+
   res.status(201).json({ success: true, service: newService });
 });
 
-router.put('/services/:id', requireRole('OWNER'), (req: AuthenticatedRequest, res: Response) => {
+router.put('/services/:id', requireRole('OWNER'), async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
   const { service_name, selling_price, duration_mins, is_active, description, hpp_items } = req.body;
   const data = db.getData();
@@ -1249,24 +1271,30 @@ router.put('/services/:id', requireRole('OWNER'), (req: AuthenticatedRequest, re
   if (is_active !== undefined) service.is_active = Boolean(is_active);
   if (description !== undefined) service.description = String(description).trim();
 
+  const relationsForThisService: any[] = [];
   if (Array.isArray(hpp_items)) {
     data.service_hpp_relations = data.service_hpp_relations.filter(r => r.service_id !== id);
     for (const item of hpp_items) {
       if (item && item.hpp_id && item.quantity_used) {
-        data.service_hpp_relations.push({
+        const rel = {
           service_id: id,
           hpp_id: item.hpp_id,
           quantity_used: Math.max(1, Number(item.quantity_used) || 1),
-        });
+        };
+        data.service_hpp_relations.push(rel);
+        relationsForThisService.push(rel);
       }
     }
   }
 
-  db.saveData();
+  await db.saveDataAsync();
+  await syncSingleServiceToFirestore(service, relationsForThisService);
+  broadcastSSE('SERVICES_UPDATED', { action: 'UPDATED', service });
+
   res.json({ success: true, service });
 });
 
-router.delete('/services/:id', requireRole('OWNER'), (req: AuthenticatedRequest, res: Response) => {
+router.delete('/services/:id', requireRole('OWNER'), async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
   const data = db.getData();
   const idx = data.services.findIndex(s => s.id === id);
@@ -1278,8 +1306,11 @@ router.delete('/services/:id', requireRole('OWNER'), (req: AuthenticatedRequest,
   data.services.splice(idx, 1);
   data.service_hpp_relations = data.service_hpp_relations.filter(r => r.service_id !== id);
 
-  db.saveData();
-  res.json({ success: true });
+  await db.saveDataAsync();
+  await deleteSingleServiceFromFirestore(id);
+  broadcastSSE('SERVICES_UPDATED', { action: 'DELETED', id });
+
+  res.json({ success: true, message: 'Layanan berhasil dihapus' });
 });
 
 // -------------------------------------------------------------

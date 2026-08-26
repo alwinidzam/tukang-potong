@@ -368,13 +368,42 @@ class Database {
     }
   }
 
-  /**
-   * Atomic file persistence using temporary file and atomic rename (fs.renameSync)
-   * with asynchronous Firestore Cloud Synchronization
-   */
+  private lastCloudSync = 0;
+  private syncPromise: Promise<void> | null = null;
+
+  public async ensureFreshData(): Promise<DatabaseSchema> {
+    const now = Date.now();
+    // Cache in-memory for 2.5 seconds per process instance to prevent excessive network roundtrips
+    if (now - this.lastCloudSync < 2500 && this.data && this.data.services && this.data.services.length > 0) {
+      return this.data;
+    }
+
+    if (this.syncPromise) {
+      await this.syncPromise;
+      return this.data;
+    }
+
+    this.syncPromise = (async () => {
+      try {
+        const cloudData = await loadFromFirestore();
+        if (cloudData && cloudData.users && cloudData.users.length > 0) {
+          const sanitizedCloud = sanitizeProductionData(cloudData, this.data.users);
+          this.data = sanitizedCloud;
+          this.lastCloudSync = Date.now();
+        }
+      } catch (e) {
+        console.warn('[Firestore ensureFreshData Note]:', e);
+      } finally {
+        this.syncPromise = null;
+      }
+    })();
+
+    await this.syncPromise;
+    return this.data;
+  }
+
   public saveData(customData?: DatabaseSchema): boolean {
     if (this.isWriting) {
-      // In-process serialization
       setImmediate(() => this.saveData(customData));
       return true;
     }
@@ -386,13 +415,9 @@ class Database {
       const dataToSave = customData || this.data;
       const jsonContent = JSON.stringify(dataToSave, null, 2);
 
-      // Write to temp file first
       fs.writeFileSync(tempFile, jsonContent, 'utf-8');
-
-      // Atomic rename to replace DB_FILE in a single filesystem operation
       fs.renameSync(tempFile, DB_FILE);
 
-      // Asynchronously mirror to Firestore without blocking local requests
       syncToFirestore(dataToSave).catch(err => {
         console.warn('[Firestore Mirror Warning]:', err);
       });
@@ -400,7 +425,6 @@ class Database {
       return true;
     } catch (e) {
       console.error('[Atomic DB Write Failed]:', e);
-      // Clean up tmp file if exists
       if (fs.existsSync(tempFile)) {
         try {
           fs.unlinkSync(tempFile);
@@ -409,6 +433,19 @@ class Database {
       return false;
     } finally {
       this.isWriting = false;
+    }
+  }
+
+  public async saveDataAsync(customData?: DatabaseSchema): Promise<boolean> {
+    const dataToSave = customData || this.data;
+    this.saveData(dataToSave);
+    try {
+      await syncToFirestore(dataToSave);
+      this.lastCloudSync = Date.now();
+      return true;
+    } catch (err) {
+      console.warn('[saveDataAsync Firestore Warning]:', err);
+      return false;
     }
   }
 

@@ -183,3 +183,96 @@ export async function loadQueuesFromFirestore(): Promise<any[] | null> {
     return null;
   }
 }
+
+/**
+ * Instant real-time single Master HPP write to Firestore
+ */
+export async function syncSingleHPPToFirestore(item: any): Promise<boolean> {
+  const db = getFirestoreDb();
+  if (!db || !item || !item.id) return false;
+  try {
+    const docRef = doc(db, 'master_hpp', String(item.id));
+    await setDoc(docRef, item, { merge: true });
+    return true;
+  } catch (e) {
+    console.warn('[Firestore Single HPP Write Error]:', e);
+    return false;
+  }
+}
+
+/**
+ * Instant real-time single Master HPP delete from Firestore
+ */
+export async function deleteSingleHPPFromFirestore(hppId: string): Promise<boolean> {
+  const db = getFirestoreDb();
+  if (!db || !hppId) return false;
+  try {
+    const docRef = doc(db, 'master_hpp', String(hppId));
+    await deleteDoc(docRef);
+    return true;
+  } catch (e) {
+    console.warn('[Firestore Single HPP Delete Error]:', e);
+    return false;
+  }
+}
+
+/**
+ * Instant real-time single Service write to Firestore
+ */
+export async function syncSingleServiceToFirestore(service: any, relations?: any[]): Promise<boolean> {
+  const db = getFirestoreDb();
+  if (!db || !service || !service.id) return false;
+  try {
+    const docRef = doc(db, 'services', String(service.id));
+    await setDoc(docRef, service, { merge: true });
+
+    if (Array.isArray(relations)) {
+      const relSnap = await getDocs(collection(db, 'service_hpp_relations'));
+      const batch = writeBatch(db);
+      for (const d of relSnap.docs) {
+        if (d.data().service_id === service.id) {
+          batch.delete(d.ref);
+        }
+      }
+      for (let i = 0; i < relations.length; i++) {
+        const r = relations[i];
+        const rId = `rel-${service.id}-${r.hpp_id}-${i}`;
+        batch.set(doc(db, 'service_hpp_relations', rId), { ...r, id: rId });
+      }
+      await batch.commit();
+    }
+    return true;
+  } catch (e) {
+    console.warn('[Firestore Single Service Write Error]:', e);
+    return false;
+  }
+}
+
+/**
+ * Instant real-time single Service delete from Firestore
+ */
+export async function deleteSingleServiceFromFirestore(serviceId: string): Promise<boolean> {
+  const db = getFirestoreDb();
+  if (!db || !serviceId) return false;
+  try {
+    const docRef = doc(db, 'services', String(serviceId));
+    await deleteDoc(docRef);
+
+    const relSnap = await getDocs(collection(db, 'service_hpp_relations'));
+    const batch = writeBatch(db);
+    let count = 0;
+    for (const d of relSnap.docs) {
+      if (d.data().service_id === serviceId) {
+        batch.delete(d.ref);
+        count++;
+      }
+    }
+    if (count > 0) {
+      await batch.commit();
+    }
+    return true;
+  } catch (e) {
+    console.warn('[Firestore Single Service Delete Error]:', e);
+    return false;
+  }
+}
