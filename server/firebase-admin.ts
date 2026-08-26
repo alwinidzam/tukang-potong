@@ -82,27 +82,7 @@ export async function syncToFirestore(data: {
     };
 
     for (const [colName, items] of Object.entries(collectionsToSync)) {
-      // Reconcile and purge removed/dummy documents from Firestore
-      try {
-        const existingSnap = await getDocs(collection(db, colName));
-        const validIds = new Set(items.map(i => String(i.id || '')));
-        const deleteBatch = writeBatch(db);
-        let deleteCount = 0;
-
-        for (const docSnap of existingSnap.docs) {
-          if (!validIds.has(docSnap.id)) {
-            deleteBatch.delete(docSnap.ref);
-            deleteCount++;
-          }
-        }
-        if (deleteCount > 0) {
-          await deleteBatch.commit();
-        }
-      } catch (colErr) {
-        console.warn(`[Firestore] Purge note for collection ${colName}:`, colErr);
-      }
-
-      if (items.length === 0) continue;
+      if (!items || items.length === 0) continue;
       
       const batch = writeBatch(db);
       for (const item of items) {
@@ -186,5 +166,20 @@ export async function deleteSingleQueueFromFirestore(queueId: string): Promise<b
   } catch (e) {
     console.warn('[Firestore Single Queue Delete Error]:', e);
     return false;
+  }
+}
+
+/**
+ * Fast direct fetch of all queues from Firestore
+ */
+export async function loadQueuesFromFirestore(): Promise<any[] | null> {
+  const db = getFirestoreDb();
+  if (!db) return null;
+  try {
+    const snap = await getDocs(collection(db, 'queues'));
+    return snap.docs.map((d) => d.data());
+  } catch (e) {
+    console.warn('[Firestore loadQueuesFromFirestore Note]:', e);
+    return null;
   }
 }

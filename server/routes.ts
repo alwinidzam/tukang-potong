@@ -13,7 +13,11 @@ import {
   isOwnerRole,
   isStaffRole,
 } from './auth.js';
-import { syncSingleQueueToFirestore, deleteSingleQueueFromFirestore } from './firebase-admin.js';
+import {
+  syncSingleQueueToFirestore,
+  deleteSingleQueueFromFirestore,
+  loadQueuesFromFirestore,
+} from './firebase-admin.js';
 
 const router = Router();
 
@@ -645,11 +649,22 @@ router.delete('/users/staff/:id', requireRole('OWNER'), (req: AuthenticatedReque
 // 3. Queue Pipeline (Single Timeline & Atomic State Transitions)
 // -------------------------------------------------------------
 
-router.get('/queues', (req: Request, res: Response) => {
+router.get('/queues', async (req: Request, res: Response) => {
   const data = db.getData();
+
+  try {
+    const cloudQueues = await loadQueuesFromFirestore();
+    if (cloudQueues && cloudQueues.length > 0) {
+      const map = new Map<string, QueueItem>();
+      (data.queues || []).forEach(q => map.set(q.id, q));
+      cloudQueues.forEach(q => map.set(q.id, q));
+      data.queues = Array.from(map.values());
+    }
+  } catch (_) {}
+
   const dateStr = (req.query.date as string) || new Date().toISOString().split('T')[0];
 
-  const queues = data.queues
+  const queues = (data.queues || [])
     .filter(q => q.queue_date === dateStr || q.status === 'IN_PROGRESS' || q.status === 'WAITING')
     .map(q => {
       const service = data.services.find(s => s.id === q.service_id);
@@ -672,7 +687,7 @@ router.get('/queues', (req: Request, res: Response) => {
 });
 
 // POST /api/queues: Create new queue entry (Customer or Walk-in)
-router.post('/queues', (req: AuthenticatedRequest, res: Response) => {
+router.post('/queues', async (req: AuthenticatedRequest, res: Response) => {
   const { customer_id, walk_in_name, customer_phone, service_id, source, notes } = req.body;
   const data = db.getData();
   const todayStr = new Date().toISOString().split('T')[0];
@@ -738,14 +753,14 @@ router.post('/queues', (req: AuthenticatedRequest, res: Response) => {
   }
 
   db.saveData();
-  syncSingleQueueToFirestore(newQueue).catch(() => {});
+  await syncSingleQueueToFirestore(newQueue);
   broadcastSSE('QUEUE_ADDED', newQueue);
 
   res.status(201).json({ success: true, queue: newQueue });
 });
 
 // POST /api/queues/:id/start: Owner or Staff starts session (Enforces exactly one IN_PROGRESS concurrently)
-router.post('/queues/:id/start', requireRole('OWNER', 'STAFF'), (req: AuthenticatedRequest, res: Response) => {
+router.post('/queues/:id/start', requireRole('OWNER', 'STAFF'), async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
   const data = db.getData();
   const queue = data.queues.find(q => q.id === id);
@@ -759,26 +774,27 @@ router.post('/queues/:id/start', requireRole('OWNER', 'STAFF'), (req: Authentica
   }
 
   // Concurrency Guard: Reset any other IN_PROGRESS queue back to WAITING atomically
-  data.queues.forEach(q => {
+  for (const q of data.queues) {
     if (q.status === 'IN_PROGRESS' && q.id !== id) {
       q.status = 'WAITING';
       q.start_time = null;
+      await syncSingleQueueToFirestore(q);
     }
-  });
+  }
 
   queue.status = 'IN_PROGRESS';
   queue.start_time = new Date().toISOString();
   queue.end_time = null;
 
   db.saveData();
-  syncSingleQueueToFirestore(queue).catch(() => {});
+  await syncSingleQueueToFirestore(queue);
   broadcastSSE('QUEUE_STARTED', queue);
 
   res.json({ success: true, queue });
 });
 
 // POST /api/queues/:id/complete: Owner or Staff completes session & processes checkout
-router.post('/queues/:id/complete', requireRole('OWNER', 'STAFF'), (req: AuthenticatedRequest, res: Response) => {
+router.post('/queues/:id/complete', requireRole('OWNER', 'STAFF'), async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
   const { discount = 0, tax = 0, payment_method = 'CASH', custom_price } = req.body;
   const data = db.getData();
@@ -849,14 +865,14 @@ router.post('/queues/:id/complete', requireRole('OWNER', 'STAFF'), (req: Authent
   data.transactions.unshift(newTx);
 
   db.saveData();
-  syncSingleQueueToFirestore(queue).catch(() => {});
+  await syncSingleQueueToFirestore(queue);
   broadcastSSE('QUEUE_COMPLETED', { queue, transaction: newTx });
 
   res.json({ success: true, queue, transaction: newTx });
 });
 
 // POST /api/queues/:id/skip: Owner or Staff skips an absent customer
-router.post('/queues/:id/skip', requireRole('OWNER', 'STAFF'), (req: AuthenticatedRequest, res: Response) => {
+router.post('/queues/:id/skip', requireRole('OWNER', 'STAFF'), async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
   const data = db.getData();
   const queue = data.queues.find(q => q.id === id);
@@ -873,14 +889,14 @@ router.post('/queues/:id/skip', requireRole('OWNER', 'STAFF'), (req: Authenticat
     .sort((a, b) => a.queue_number - b.queue_number)[0];
 
   db.saveData();
-  syncSingleQueueToFirestore(queue).catch(() => {});
+  await syncSingleQueueToFirestore(queue);
   broadcastSSE('QUEUE_SKIPPED', { skippedQueue: queue, nextWaiting });
 
   res.json({ success: true, skippedQueue: queue, nextWaiting });
 });
 
 // DELETE /api/queues/:id: IDOR-Protected Queue Cancellation
-router.delete('/queues/:id', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+router.delete('/queues/:id', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
   const data = db.getData();
   const idx = data.queues.findIndex(q => q.id === id);
@@ -898,7 +914,7 @@ router.delete('/queues/:id', requireAuth, (req: AuthenticatedRequest, res: Respo
 
   data.queues.splice(idx, 1);
   db.saveData();
-  deleteSingleQueueFromFirestore(id).catch(() => {});
+  await deleteSingleQueueFromFirestore(id);
   broadcastSSE('QUEUE_DELETED', { id });
 
   res.json({ success: true });

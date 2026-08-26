@@ -42,7 +42,11 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
 
   useEffect(() => {
     if (currentUser) {
-      const userQueues = queues.filter((q) => q.customer_id === currentUser.id);
+      const userQueues = queues.filter(
+        (q) =>
+          q.customer_id === currentUser.id ||
+          (currentUser.phone && q.customer_phone && q.customer_phone === currentUser.phone)
+      );
       setMyQueues(userQueues);
       setPhone(currentUser.phone || '');
 
