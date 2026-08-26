@@ -239,6 +239,25 @@ export default function App() {
     // 4. Fast 3-Second Smart Polling Safety Net
     const interval = setInterval(loadAllData, 3000);
 
+    // 5. Marathon Mode: Screen Wake Lock (keeps counter/tablet screen awake 24/7 without timeout)
+    let wakeLockSentinel: any = null;
+    const requestWakeLock = async () => {
+      if ('wakeLock' in navigator && document.visibilityState === 'visible') {
+        try {
+          wakeLockSentinel = await (navigator as any).wakeLock.request('screen');
+        } catch (_) {}
+      }
+    };
+
+    requestWakeLock();
+
+    const handleWakeLockVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        requestWakeLock();
+      }
+    };
+    document.addEventListener('visibilitychange', handleWakeLockVisibility);
+
     return () => {
       unsubscribeQueues?.();
       unsubscribeNotifs?.();
@@ -246,6 +265,8 @@ export default function App() {
       clearTimeout(sseRetryTimer);
       window.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleVisibilityChange);
+      document.removeEventListener('visibilitychange', handleWakeLockVisibility);
+      wakeLockSentinel?.release().catch(() => {});
       clearInterval(interval);
     };
   }, [loadAllData]);
