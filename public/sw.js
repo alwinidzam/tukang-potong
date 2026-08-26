@@ -1,8 +1,9 @@
-const CACHE_NAME = "arez-barbershop-v3";
+const CACHE_NAME = "arez-barbershop-v5";
 const ASSETS_TO_CACHE = [
   "/",
   "/index.html",
   "/manifest.json",
+  "/manifest.webmanifest",
   "/LOGOICONBARU.svg",
   "/LOGOICONBARU.png",
   "/icon-192.png",
@@ -35,20 +36,49 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  // Network-first for HTML / navigation requests to guarantee latest UI
+  const isHtml =
+    event.request.mode === "navigate" ||
+    event.request.headers.get("accept")?.includes("text/html") ||
+    event.request.url.endsWith("/") ||
+    event.request.url.endsWith("index.html");
+
+  if (isHtml) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response && response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return response;
+        })
+        .catch(async () => {
+          const cached = await caches.match("/index.html") || await caches.match(event.request);
+          return cached || fetch(event.request);
+        })
+    );
+    return;
+  }
+
+  // Stale-While-Revalidate for hashed static assets
   event.respondWith(
     caches.match(event.request).then((cached) => {
-      return (
-        cached ||
-        fetch(event.request)
-          .then((response) => {
-            if (response && response.status === 200 && (response.type === "basic" || response.type === "cors")) {
-              const clone = response.clone();
-              caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-            }
-            return response;
-          })
-          .catch(() => caches.match("/index.html"))
-      );
+      const fetchPromise = fetch(event.request)
+        .then((networkResponse) => {
+          if (
+            networkResponse &&
+            networkResponse.status === 200 &&
+            (networkResponse.type === "basic" || networkResponse.type === "cors")
+          ) {
+            const clone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return networkResponse;
+        })
+        .catch(() => null);
+
+      return cached || fetchPromise;
     })
   );
 });

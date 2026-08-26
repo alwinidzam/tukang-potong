@@ -1139,17 +1139,20 @@ router.get('/services', (req: Request, res: Response) => {
   const data = db.getData();
   const servicesWithHPP = data.services.map(s => {
     const relations = data.service_hpp_relations.filter(r => r.service_id === s.id);
-    const hppBreakdown = relations.map(r => {
-      const hppItem = data.master_hpp.find(h => h.id === r.hpp_id);
-      return {
-        hpp_id: r.hpp_id,
-        item_name: hppItem?.item_name || 'Unknown',
-        unit_cost: hppItem?.unit_cost || 0,
-        unit_type: hppItem?.unit_type || 'pcs',
-        quantity_used: r.quantity_used,
-        subtotal: (hppItem?.unit_cost || 0) * r.quantity_used,
-      };
-    });
+    const hppBreakdown = relations
+      .map(r => {
+        const hppItem = data.master_hpp.find(h => h.id === r.hpp_id);
+        if (!hppItem) return null;
+        return {
+          hpp_id: r.hpp_id,
+          item_name: hppItem.item_name,
+          unit_cost: hppItem.unit_cost || 0,
+          unit_type: hppItem.unit_type || 'pcs',
+          quantity_used: r.quantity_used,
+          subtotal: (hppItem.unit_cost || 0) * r.quantity_used,
+        };
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null);
 
     const totalHPP = hppBreakdown.reduce((acc, curr) => acc + curr.subtotal, 0);
     const profitMargin = s.selling_price - totalHPP;

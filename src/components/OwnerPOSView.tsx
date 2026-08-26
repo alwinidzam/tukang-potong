@@ -513,23 +513,54 @@ export const OwnerPOSView: React.FC<OwnerPOSViewProps> = ({
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-medium text-[#20231F] mb-1">
-                  Pilih Layanan Grooming
+              <div className="space-y-1.5">
+                <label className="block text-xs font-medium text-[#20231F]">
+                  Pilih Layanan Grooming <span className="text-[#A84B45]">*</span>
                 </label>
-                <select
-                  value={walkInServiceId}
-                  onChange={(e) => setWalkInServiceId(e.target.value)}
-                  className="w-full px-3 py-2.5 bg-[#FFFFFF] border border-[#E5E5DF] rounded-[8px] text-xs text-[#20231F] focus:outline-none focus:border-[#26362E]"
-                >
+                <div className="space-y-2 max-h-52 overflow-y-auto no-scrollbar pr-0.5">
                   {services
-                    .filter((s) => s.is_active)
-                    .map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.service_name} — Rp {s.selling_price.toLocaleString('id-ID')} ({s.duration_mins}m)
-                      </option>
-                    ))}
-                </select>
+                    .filter((s) => s.is_active !== false)
+                    .map((s) => {
+                      const isSelected = walkInServiceId === s.id;
+                      return (
+                        <button
+                          key={s.id}
+                          type="button"
+                          onClick={() => setWalkInServiceId(s.id)}
+                          className={`w-full text-left p-3 rounded-[10px] border transition-all flex items-center justify-between gap-3 active:scale-[0.99] ${
+                            isSelected
+                              ? 'border-[#26362E] bg-[#E8ECE8]/50 shadow-xs ring-1 ring-[#26362E]'
+                              : 'border-[#E5E5DF] bg-[#FFFFFF] hover:border-[#686D66]/40'
+                          }`}
+                        >
+                          <div className="min-w-0 flex-1">
+                            <span className="font-semibold text-xs text-[#20231F] truncate block">
+                              {s.service_name}
+                            </span>
+                            <p className="text-[11px] text-[#686D66] mt-0.5">
+                              Rp {s.selling_price.toLocaleString('id-ID')}
+                            </p>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-[10px] font-medium text-[#686D66] bg-[#F1F1EC] px-2 py-0.5 rounded-full flex items-center gap-1">
+                              <Clock className="w-2.5 h-2.5 text-[#92968F]" />
+                              {s.duration_mins}m
+                            </span>
+                            <div
+                              className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${
+                                isSelected
+                                  ? 'border-[#26362E] bg-[#26362E]'
+                                  : 'border-[#E5E5DF] bg-[#FFFFFF]'
+                              }`}
+                            >
+                              {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-[#FFFFFF]" />}
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                </div>
               </div>
 
               <div>

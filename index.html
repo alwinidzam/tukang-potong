@@ -57,10 +57,19 @@
     <script type="module" src="/src/main.tsx"></script>
 
     <script>
-      // 1. Service Worker Registration
+      // 1. Service Worker Registration & Auto Update
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {
-          navigator.serviceWorker.register("/sw.js").catch(console.error);
+          navigator.serviceWorker
+            .register("/sw.js")
+            .then((reg) => {
+              reg.update().catch(() => {});
+            })
+            .catch(console.error);
+        });
+
+        navigator.serviceWorker.addEventListener("controllerchange", () => {
+          console.log("[ServiceWorker] Controller updated to latest build.");
         });
       }
 

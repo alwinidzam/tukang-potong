@@ -789,20 +789,37 @@ export const ServicesView: React.FC<ServicesViewProps> = ({
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-medium text-[#20231F] mb-1">
+              <div className="space-y-1.5">
+                <label className="block text-xs font-medium text-[#20231F]">
                   Kategori Bahan / Biaya
                 </label>
-                <select
-                  value={hppCategory}
-                  onChange={(e) => setHppCategory(e.target.value)}
-                  className="w-full px-3 py-2.5 bg-[#FFFFFF] border border-[#E5E5DF] rounded-[8px] text-xs text-[#20231F] focus:outline-none focus:border-[#26362E]"
-                >
-                  <option value="Bahan Baku & Steril">Bahan Baku & Steril</option>
-                  <option value="Styling & Perawatan">Styling & Perawatan</option>
-                  <option value="Operasional & Utilitas">Operasional & Utilitas</option>
-                  <option value="Lainnya">Lainnya</option>
-                </select>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    'Bahan Baku & Steril',
+                    'Styling & Perawatan',
+                    'Operasional & Utilitas',
+                    'Lainnya',
+                  ].map((cat) => {
+                    const isSel = hppCategory === cat;
+                    return (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => setHppCategory(cat)}
+                        className={`p-2.5 text-xs rounded-[8px] border text-left font-medium transition-all flex items-center justify-between active:scale-[0.99] ${
+                          isSel
+                            ? 'border-[#26362E] bg-[#E8ECE8]/60 text-[#20231F] font-semibold ring-1 ring-[#26362E]'
+                            : 'border-[#E5E5DF] bg-[#FFFFFF] text-[#686D66] hover:text-[#20231F]'
+                        }`}
+                      >
+                        <span className="truncate">{cat}</span>
+                        {isSel && (
+                          <div className="w-1.5 h-1.5 rounded-full bg-[#26362E] shrink-0" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
