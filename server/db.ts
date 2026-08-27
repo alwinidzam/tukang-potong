@@ -247,7 +247,6 @@ function sanitizeProductionData(raw: DatabaseSchema, existingUsers: User[] = [])
       if (!u.status) {
         u.status = 'ACTIVE';
       }
-
       // Preserve password_hash from existing memory if stripped by cloud sync
       if (!u.password_hash && u.id) {
         const existing = existingMap.get(u.id) || (u.username ? existingMap.get(u.username.toLowerCase()) : undefined);
@@ -263,6 +262,14 @@ function sanitizeProductionData(raw: DatabaseSchema, existingUsers: User[] = [])
 
       return u as User;
     });
+
+  // Inject any users that exist in local memory but haven't propagated to Firestore yet
+  const cloudUserIds = new Set(sanitizedUsers.map(u => u.id));
+  for (const localUser of existingUsers) {
+    if (!cloudUserIds.has(localUser.id) && !dummyUserIds.has(localUser.id)) {
+      sanitizedUsers.push(localUser);
+    }
+  }
 
   // Ensure single usr-admin exists as OWNER with valid credentials
   let adminUser = sanitizedUsers.find(u => u.id === 'usr-admin');
