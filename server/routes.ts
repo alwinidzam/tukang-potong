@@ -1136,46 +1136,51 @@ router.patch('/hpp/:id/status', requireRole('OWNER'), async (req: AuthenticatedR
 });
 
 router.delete('/hpp/:id', requireRole('OWNER'), async (req: AuthenticatedRequest, res: Response) => {
-  const { id } = req.params;
-  const force = req.query.force === 'true' || req.body?.force === true;
-  const data = db.getData();
-  const idx = data.master_hpp.findIndex(h => h.id === id);
+  try {
+    const { id } = req.params;
+    const force = req.query.force === 'true' || req.body?.force === true || req.body?.force === 'true';
+    const data = db.getData();
+    const idx = (data.master_hpp || []).findIndex(h => h.id === id);
 
-  if (idx === -1) {
-    return res.status(404).json({ error: 'Komponen HPP tidak ditemukan.' });
-  }
+    if (idx === -1) {
+      return res.status(404).json({ error: 'Komponen HPP tidak ditemukan.' });
+    }
 
-  const targetItem = data.master_hpp[idx];
-  const usingRelations = (data.service_hpp_relations || []).filter(r => r.hpp_id === id);
+    const targetItem = data.master_hpp[idx];
+    const usingRelations = (data.service_hpp_relations || []).filter(r => r.hpp_id === id);
 
-  // If used in active services and not force-deleted, return warning & require confirmation
-  if (usingRelations.length > 0 && !force) {
-    const serviceNames = usingRelations.map(r => {
-      const s = data.services.find(srv => srv.id === r.service_id);
-      return s?.service_name || 'Layanan';
+    // If used in active services and not force-deleted, return warning & require confirmation
+    if (usingRelations.length > 0 && !force) {
+      const serviceNames = usingRelations.map(r => {
+        const s = (data.services || []).find(srv => srv.id === r.service_id);
+        return s?.service_name || 'Layanan';
+      });
+
+      return res.status(409).json({
+        error: `Komponen "${targetItem.item_name}" sedang digunakan dalam ${usingRelations.length} resep layanan (${serviceNames.slice(0, 2).join(', ')}${serviceNames.length > 2 ? '...' : ''}).`,
+        requires_confirmation: true,
+        used_in_services_count: usingRelations.length,
+        service_names: serviceNames,
+        recommendation: 'DEACTIVATE',
+      });
+    }
+
+    // Remove relation entries cleanly
+    data.service_hpp_relations = (data.service_hpp_relations || []).filter(r => r.hpp_id !== id);
+    data.master_hpp.splice(idx, 1);
+
+    await db.saveDataAsync();
+    await deleteSingleHPPFromFirestore(id);
+    broadcastSSE('HPP_UPDATED', { action: 'DELETED', deletedId: id });
+
+    return res.json({
+      success: true,
+      message: `Komponen HPP "${targetItem.item_name}" berhasil dihapus.`,
     });
-
-    return res.status(409).json({
-      error: `Komponen "${targetItem.item_name}" sedang digunakan dalam ${usingRelations.length} resep layanan (${serviceNames.slice(0, 2).join(', ')}${serviceNames.length > 2 ? '...' : ''}).`,
-      requires_confirmation: true,
-      used_in_services_count: usingRelations.length,
-      service_names: serviceNames,
-      recommendation: 'DEACTIVATE',
-    });
+  } catch (err: any) {
+    console.error('[DELETE /api/hpp/:id Error]:', err);
+    return res.status(500).json({ error: err.message || 'Gagal menghapus komponen HPP' });
   }
-
-  // Remove relation entries cleanly
-  data.service_hpp_relations = (data.service_hpp_relations || []).filter(r => r.hpp_id !== id);
-  data.master_hpp.splice(idx, 1);
-
-  await db.saveDataAsync();
-  await deleteSingleHPPFromFirestore(id);
-  broadcastSSE('HPP_UPDATED', { action: 'DELETED', deletedId: id });
-
-  res.json({
-    success: true,
-    message: `Komponen HPP "${targetItem.item_name}" berhasil dihapus.`,
-  });
 });
 
 // -------------------------------------------------------------

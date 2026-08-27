@@ -27,6 +27,16 @@ function getAuthHeaders(extraHeaders: Record<string, string> = {}): Record<strin
   return headers;
 }
 
+async function safeJson(res: Response, fallbackError = 'Terjadi kesalahan pada server'): Promise<any> {
+  try {
+    const data = await res.json();
+    return data;
+  } catch (_) {
+    const text = await res.text().catch(() => '');
+    return { error: text || fallbackError };
+  }
+}
+
 export const api = {
   // ----------------------------------------------------------------------
   // Auth
@@ -313,7 +323,7 @@ export const api = {
       headers: getAuthHeaders(),
       credentials: 'include',
     });
-    const data = await res.json();
+    const data = await safeJson(res, 'Gagal mengambil detail komponen HPP');
     if (!res.ok) throw new Error(data.error || 'Gagal mengambil detail komponen HPP');
     return data;
   },
@@ -325,7 +335,7 @@ export const api = {
       body: JSON.stringify(payload),
       credentials: 'include',
     });
-    const data = await res.json();
+    const data = await safeJson(res, 'Gagal menambah komponen HPP');
     if (!res.ok) throw new Error(data.error || 'Gagal menambah komponen HPP');
     return data;
   },
@@ -337,7 +347,7 @@ export const api = {
       body: JSON.stringify(payload),
       credentials: 'include',
     });
-    const data = await res.json();
+    const data = await safeJson(res, 'Gagal memperbarui komponen HPP');
     if (!res.ok) throw new Error(data.error || 'Gagal memperbarui komponen HPP');
     return data;
   },
@@ -349,7 +359,7 @@ export const api = {
       body: JSON.stringify({ is_active }),
       credentials: 'include',
     });
-    const data = await res.json();
+    const data = await safeJson(res, 'Gagal mengubah status komponen HPP');
     if (!res.ok) throw new Error(data.error || 'Gagal mengubah status komponen HPP');
     return data;
   },
@@ -357,17 +367,18 @@ export const api = {
   async deleteHPP(id: string, force = false): Promise<{ success: boolean; message?: string; requires_confirmation?: boolean; error?: string; used_in_services_count?: number; service_names?: string[] }> {
     const res = await fetch(`${API_BASE}/hpp/${id}${force ? '?force=true' : ''}`, {
       method: 'DELETE',
-      headers: getAuthHeaders(),
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ force }),
       credentials: 'include',
     });
-    const data = await res.json();
+    const data = await safeJson(res, 'Gagal menghapus komponen HPP');
     if (!res.ok) {
-      if (res.status === 409 && data.requires_confirmation) {
+      if (res.status === 409 && data && data.requires_confirmation) {
         return data;
       }
-      throw new Error(data.error || 'Gagal menghapus komponen HPP');
+      throw new Error((data && data.error) ? data.error : 'Gagal menghapus komponen HPP');
     }
-    return data;
+    return data || { success: true };
   },
 
   // ----------------------------------------------------------------------
@@ -400,7 +411,7 @@ export const api = {
       body: JSON.stringify(payload),
       credentials: 'include',
     });
-    const data = await res.json();
+    const data = await safeJson(res, 'Gagal membuat layanan');
     if (!res.ok) throw new Error(data.error || 'Gagal membuat layanan');
     return data;
   },
@@ -412,7 +423,7 @@ export const api = {
       body: JSON.stringify(payload),
       credentials: 'include',
     });
-    const data = await res.json();
+    const data = await safeJson(res, 'Gagal mengupdate layanan');
     if (!res.ok) throw new Error(data.error || 'Gagal mengupdate layanan');
     return data;
   },
@@ -423,7 +434,7 @@ export const api = {
       headers: getAuthHeaders(),
       credentials: 'include',
     });
-    const data = await res.json();
+    const data = await safeJson(res, 'Gagal menghapus layanan');
     if (!res.ok) throw new Error(data.error || 'Gagal menghapus layanan');
     return data;
   },

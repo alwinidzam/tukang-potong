@@ -73,8 +73,8 @@ export async function syncToFirestore(data: {
       queues: data.queues || [],
       master_hpp: data.master_hpp || [],
       services: data.services || [],
-      service_hpp_relations: (data.service_hpp_relations || []).map((rel, idx) => ({
-        id: `rel-${rel.service_id}-${rel.hpp_id}-${idx}`,
+      service_hpp_relations: (data.service_hpp_relations || []).map((rel) => ({
+        id: `rel-${rel.service_id}-${rel.hpp_id}`,
         ...rel,
       })),
       transactions: data.transactions || [],
@@ -116,12 +116,20 @@ export async function loadFromFirestore(): Promise<any | null> {
       result[col] = snap.docs.map(d => d.data());
     }
 
-    // Filter out artificial ID from relations if needed
+    // Deduplicate and filter out artificial ID from relations
     if (result.service_hpp_relations) {
-      result.service_hpp_relations = result.service_hpp_relations.map(r => {
-        const { id, ...rest } = r;
-        return rest;
-      });
+      const relMap = new Map<string, any>();
+      for (const r of result.service_hpp_relations) {
+        if (r && r.service_id && r.hpp_id) {
+          const key = `${r.service_id}___${r.hpp_id}`;
+          relMap.set(key, {
+            service_id: r.service_id,
+            hpp_id: r.hpp_id,
+            quantity_used: Math.max(1, Number(r.quantity_used) || 1),
+          });
+        }
+      }
+      result.service_hpp_relations = Array.from(relMap.values());
     }
 
     // Check if firestore actually had populated collections
@@ -209,6 +217,24 @@ export async function deleteSingleHPPFromFirestore(hppId: string): Promise<boole
   try {
     const docRef = doc(db, 'master_hpp', String(hppId));
     await deleteDoc(docRef);
+
+    // Also delete any matching relations from service_hpp_relations collection
+    try {
+      const relSnap = await getDocs(collection(db, 'service_hpp_relations'));
+      const batch = writeBatch(db);
+      let count = 0;
+      for (const d of relSnap.docs) {
+        const data = d.data();
+        if (data.hpp_id === hppId) {
+          batch.delete(d.ref);
+          count++;
+        }
+      }
+      if (count > 0) {
+        await batch.commit();
+      }
+    } catch (_) {}
+
     return true;
   } catch (e) {
     console.warn('[Firestore Single HPP Delete Error]:', e);

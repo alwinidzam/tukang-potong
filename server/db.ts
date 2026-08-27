@@ -283,17 +283,51 @@ function sanitizeProductionData(raw: DatabaseSchema, existingUsers: User[] = [])
   const sanitizedTransactions = (raw.transactions || []).filter(t => !dummyTrxIds.has(t.id));
   const sanitizedNotifs = (raw.notifications || []).filter(n => !dummyNotifIds.has(n.id) && !dummyUserIds.has(n.user_id || ''));
 
-  const sanitizedHPP = (raw.master_hpp || []).map(h => ({
-    ...h,
-    category: h.category || 'Bahan Baku & Steril',
-    is_active: h.is_active !== false,
-  }));
+  // Deduplicate master_hpp by ID
+  const seenHppIds = new Set<string>();
+  const sanitizedHPP: MasterHPP[] = [];
+  for (const h of (raw.master_hpp || [])) {
+    if (h && h.id && !seenHppIds.has(h.id)) {
+      seenHppIds.add(h.id);
+      sanitizedHPP.push({
+        ...h,
+        category: h.category || 'Bahan Baku & Steril',
+        is_active: h.is_active !== false,
+      });
+    }
+  }
+
+  // Deduplicate services by ID
+  const seenServiceIds = new Set<string>();
+  const sanitizedServices: Service[] = [];
+  for (const s of (raw.services || [])) {
+    if (s && s.id && !seenServiceIds.has(s.id)) {
+      seenServiceIds.add(s.id);
+      sanitizedServices.push(s);
+    }
+  }
+
+  // Deduplicate and strictly validate service_hpp_relations
+  const relationMap = new Map<string, ServiceHPPRelation>();
+  for (const rel of (raw.service_hpp_relations || [])) {
+    if (rel && rel.service_id && rel.hpp_id) {
+      if (seenServiceIds.has(rel.service_id) && seenHppIds.has(rel.hpp_id)) {
+        const key = `${rel.service_id}___${rel.hpp_id}`;
+        relationMap.set(key, {
+          service_id: rel.service_id,
+          hpp_id: rel.hpp_id,
+          quantity_used: Math.max(1, Number(rel.quantity_used) || 1),
+        });
+      }
+    }
+  }
+  const sanitizedRelations = Array.from(relationMap.values());
 
   return {
     users: finalUsers,
     master_hpp: sanitizedHPP,
-    services: raw.services || [],
-    service_hpp_relations: raw.service_hpp_relations || [],
+    services: sanitizedServices,
+    service_hpp_relations: sanitizedRelations,
     queues: sanitizedQueues,
     transactions: sanitizedTransactions,
     notifications: sanitizedNotifs,
