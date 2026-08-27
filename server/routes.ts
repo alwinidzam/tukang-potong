@@ -659,6 +659,7 @@ router.delete('/users/staff/:id', requireRole('OWNER'), async (req: Authenticate
   }
 
   targetUser.status = 'INACTIVE';
+  targetUser.deleted_at = new Date().toISOString();
   targetUser.updated_at = new Date().toISOString();
   await db.saveDataAsync();
   await syncSingleUserToFirestore(targetUser);
