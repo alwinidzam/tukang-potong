@@ -21,7 +21,7 @@ async function startServer() {
   // JSON Body Parser & URL Encoded & Cookie Parser
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
-  app.use(cookieParser(process.env.SESSION_SECRET || 'arez_secret_session_key_production_2026'));
+  app.use(cookieParser(process.env.SESSION_SECRET));
 
   // API Router FIRST
   app.use('/api', apiRouter);

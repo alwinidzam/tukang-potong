@@ -3,7 +3,10 @@ import { Request, Response, NextFunction } from 'express';
 import { db, User, UserRole } from './db.js';
 import { syncSingleRevokedTokensToFirestore } from './firebase-admin.js';
 
-const SESSION_SECRET = process.env.SESSION_SECRET || 'arez_secret_session_key_production_2026_persistent_token_salt';
+const SESSION_SECRET = process.env.SESSION_SECRET;
+if (!SESSION_SECRET) {
+  throw new Error('CRITICAL FATAL ERROR: SESSION_SECRET environment variable is missing. Server refuses to boot to prevent cryptographic forgery.');
+}
 const SESSION_TTL_MS = 365 * 24 * 60 * 60 * 1000; // 365 days (1 year permanent session - eliminates unexpected auto-logout)
 
 export interface SessionData {

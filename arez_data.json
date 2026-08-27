@@ -1,36 +1,36 @@
 {
   "users": [
     {
-      "created_at": "2026-08-27T12:02:40.171Z",
+      "last_visit_at": null,
+      "total_visits": 0,
+      "password_hash": "pbkdf2_sha256$100000$d30b938b04e785d9626180d38fe88a54$2440ea55b7eac145d30b75ef8451265556805b13cb552821a5b46da99bf3856bac02fbfdf8bf6dc3903472ed19d009ff6efa2e1fe0ed78ae3892dd14d9e7375b",
+      "phone": "081288990011",
+      "updated_at": "2026-08-27T12:02:40.171Z",
       "username": "CEO POTONG",
       "full_name": "Aris (CEO Arez Barbershop)",
-      "phone": "081288990011",
-      "total_visits": 0,
-      "email": "owner@arezbarbershop.com",
-      "last_visit_at": null,
-      "role": "OWNER",
-      "last_login_at": "2026-08-27T12:02:40.171Z",
-      "id": "usr-admin",
       "status": "ACTIVE",
-      "updated_at": "2026-08-27T12:02:40.171Z",
-      "password_hash": "pbkdf2_sha256$100000$d30b938b04e785d9626180d38fe88a54$2440ea55b7eac145d30b75ef8451265556805b13cb552821a5b46da99bf3856bac02fbfdf8bf6dc3903472ed19d009ff6efa2e1fe0ed78ae3892dd14d9e7375b"
+      "last_login_at": "2026-08-27T12:02:40.171Z",
+      "created_at": "2026-08-27T12:02:40.171Z",
+      "id": "usr-admin",
+      "email": "owner@arezbarbershop.com",
+      "role": "OWNER"
     },
     {
-      "id": "usr-cust-1787832235413",
-      "favorite_day": "Kamis",
-      "last_visit_at": "2026-08-27T12:03:55.413Z",
-      "full_name": "alwi nidzam",
-      "google_id": "g-1787832231896",
-      "status": "ACTIVE",
       "created_at": "2026-08-27T12:03:55.413Z",
+      "favorite_hour": "15:00 - 18:00",
+      "total_visits": 1,
+      "updated_at": "2026-08-27T12:03:55.413Z",
+      "email": "alwinizam0405@gmail.com",
+      "avatar_url": "https://api.dicebear.com/7.x/initials/svg?seed=alwi%20nidzam",
+      "favorite_service": "Signature Haircut (Standard)",
+      "favorite_day": "Kamis",
+      "status": "ACTIVE",
+      "full_name": "alwi nidzam",
+      "last_visit_at": "2026-08-27T12:03:55.413Z",
+      "id": "usr-cust-1787832235413",
       "role": "CUSTOMER",
       "phone": "081363786239",
-      "updated_at": "2026-08-27T12:03:55.413Z",
-      "favorite_hour": "15:00 - 18:00",
-      "email": "alwinizam0405@gmail.com",
-      "total_visits": 1,
-      "avatar_url": "https://api.dicebear.com/7.x/initials/svg?seed=alwi%20nidzam",
-      "favorite_service": "Signature Haircut (Standard)"
+      "google_id": "g-1787832231896"
     },
     {
       "id": "usr-cust-A",
@@ -57,167 +57,167 @@
     {
       "item_name": "Pisau Cukur Silet Platinum (Sekali Pakai)",
       "is_active": true,
-      "id": "hpp-1",
       "updated_at": "2026-08-27T12:02:40.020Z",
-      "unit_type": "pcs",
       "category": "Bahan Baku & Steril",
-      "unit_cost": 1500
+      "id": "hpp-1",
+      "unit_cost": 1500,
+      "unit_type": "pcs"
     },
     {
-      "item_name": "Komisi karyawan",
-      "description": "",
-      "created_at": "2026-08-26T20:52:12.079Z",
       "unit_cost": 9000,
-      "category": "Lainnya",
+      "description": "",
+      "id": "hpp-1787777532079-208",
       "is_active": true,
-      "updated_at": "2026-08-26T20:52:12.079Z",
+      "created_at": "2026-08-26T20:52:12.079Z",
       "unit_type": "Perkepala",
-      "id": "hpp-1787777532079-208"
+      "category": "Lainnya",
+      "updated_at": "2026-08-26T20:52:12.079Z",
+      "item_name": "Komisi karyawan"
     },
     {
-      "created_at": "2026-08-26T20:57:25.746Z",
       "item_name": "Komisi karyawan cukur anak",
-      "category": "Bahan Baku & Steril",
-      "unit_cost": 8000,
+      "created_at": "2026-08-26T20:57:25.746Z",
       "description": "",
+      "unit_type": "Perkepala",
       "updated_at": "2026-08-26T20:57:25.746Z",
       "is_active": true,
-      "unit_type": "Perkepala",
-      "id": "hpp-1787777845746-860"
+      "category": "Bahan Baku & Steril",
+      "id": "hpp-1787777845746-860",
+      "unit_cost": 8000
     },
     {
-      "is_active": true,
-      "updated_at": "2026-08-27T03:57:44.712Z",
-      "unit_type": "Per kepala",
-      "category": "Bahan Baku & Steril",
-      "item_name": "Komisi karyawan",
-      "description": "",
-      "id": "hpp-1787803064712-53",
-      "created_at": "2026-08-27T03:57:44.712Z",
-      "unit_cost": 9000
-    },
-    {
-      "is_active": true,
-      "description": "",
-      "created_at": "2026-08-27T03:59:09.653Z",
-      "id": "hpp-1787803149654-554",
-      "unit_type": "Per kepala",
-      "category": "Bahan Baku & Steril",
-      "item_name": "Komisi karyawan",
       "unit_cost": 9000,
-      "updated_at": "2026-08-27T03:59:09.653Z"
+      "category": "Bahan Baku & Steril",
+      "is_active": true,
+      "created_at": "2026-08-27T03:57:44.712Z",
+      "description": "",
+      "unit_type": "Per kepala",
+      "updated_at": "2026-08-27T03:57:44.712Z",
+      "id": "hpp-1787803064712-53",
+      "item_name": "Komisi karyawan"
     },
     {
-      "updated_at": "2026-08-27T12:02:40.020Z",
+      "unit_cost": 9000,
+      "category": "Bahan Baku & Steril",
+      "updated_at": "2026-08-27T03:59:09.653Z",
+      "is_active": true,
+      "unit_type": "Per kepala",
+      "created_at": "2026-08-27T03:59:09.653Z",
+      "description": "",
+      "id": "hpp-1787803149654-554",
+      "item_name": "Komisi karyawan"
+    },
+    {
       "unit_cost": 3000,
       "unit_type": "10g",
-      "id": "hpp-2",
-      "is_active": true,
       "item_name": "Pomade Waterbased / Matte Clay Premium",
-      "category": "Styling & Perawatan"
+      "category": "Styling & Perawatan",
+      "id": "hpp-2",
+      "updated_at": "2026-08-27T12:02:40.020Z",
+      "is_active": true
     },
     {
-      "item_name": "Shaving Cream & Foam Anti-Iritasi",
-      "is_active": true,
-      "updated_at": "2026-08-27T12:02:40.020Z",
-      "category": "Bahan Baku & Steril",
+      "unit_cost": 1200,
       "unit_type": "porsi",
+      "updated_at": "2026-08-27T12:02:40.020Z",
       "id": "hpp-3",
-      "unit_cost": 1200
+      "is_active": true,
+      "category": "Bahan Baku & Steril",
+      "item_name": "Shaving Cream & Foam Anti-Iritasi"
     },
     {
-      "item_name": "Neck Paper & Tissue Leher Steril",
-      "is_active": true,
+      "unit_cost": 600,
+      "unit_type": "pcs",
       "updated_at": "2026-08-27T12:02:40.020Z",
+      "item_name": "Neck Paper & Tissue Leher Steril",
       "category": "Bahan Baku & Steril",
       "id": "hpp-4",
-      "unit_type": "pcs",
-      "unit_cost": 600
+      "is_active": true
     },
     {
-      "updated_at": "2026-08-27T12:02:40.020Z",
-      "item_name": "Tonic & Hair Serum Nutrisi",
       "is_active": true,
-      "category": "Styling & Perawatan",
-      "unit_cost": 2000,
       "id": "hpp-5",
-      "unit_type": "ml"
+      "category": "Styling & Perawatan",
+      "item_name": "Tonic & Hair Serum Nutrisi",
+      "unit_cost": 2000,
+      "unit_type": "ml",
+      "updated_at": "2026-08-27T12:02:40.020Z"
     },
     {
+      "category": "Operasional & Utilitas",
       "item_name": "Listrik, AC & Clipper Sterilizer (Proporsional)",
       "is_active": true,
-      "updated_at": "2026-08-27T12:02:40.020Z",
       "id": "hpp-6",
-      "unit_type": "sesi",
-      "category": "Operasional & Utilitas",
-      "unit_cost": 2500
+      "updated_at": "2026-08-27T12:02:40.020Z",
+      "unit_cost": 2500,
+      "unit_type": "sesi"
     },
     {
-      "item_name": "Handuk Hangat & Essential Oil Wash",
       "is_active": true,
-      "unit_type": "sesi",
-      "updated_at": "2026-08-27T12:02:40.020Z",
-      "id": "hpp-7",
       "category": "Bahan Baku & Steril",
-      "unit_cost": 1800
+      "item_name": "Handuk Hangat & Essential Oil Wash",
+      "updated_at": "2026-08-27T12:02:40.020Z",
+      "unit_cost": 1800,
+      "unit_type": "sesi",
+      "id": "hpp-7"
     }
   ],
   "services": [
     {
       "selling_price": 50000,
+      "service_name": "Signature Haircut (Standard)",
+      "duration_mins": 18,
       "description": "Potong presisi, cuci rambut, styling pomade & hot towel finish",
       "is_active": true,
-      "duration_mins": 18,
-      "id": "srv-1",
-      "service_name": "Signature Haircut (Standard)"
+      "id": "srv-1"
     },
     {
       "is_active": true,
       "duration_mins": 18,
-      "description": "Cukur saja",
       "service_name": "Haircut man",
+      "id": "srv-1787777622568",
       "selling_price": 15000,
-      "id": "srv-1787777622568"
+      "description": "Cukur saja"
     },
     {
+      "duration_mins": 18,
       "service_name": "Haircut kids",
       "id": "srv-1787778231159",
-      "duration_mins": 18,
-      "selling_price": 13000,
       "description": "Cukur saja",
+      "is_active": true,
+      "selling_price": 13000
+    },
+    {
+      "selling_price": 100000,
+      "id": "srv-1787832353287",
+      "description": "",
+      "duration_mins": 21,
+      "service_name": "Potong",
       "is_active": true
     },
     {
-      "service_name": "Potong",
-      "duration_mins": 21,
-      "description": "",
-      "is_active": true,
-      "selling_price": 100000,
-      "id": "srv-1787832353287"
-    },
-    {
-      "duration_mins": 18,
+      "selling_price": 75000,
       "service_name": "Gentlemen Executive Cut + Wash + Tonic",
       "id": "srv-2",
+      "duration_mins": 18,
       "description": "Haircut eksklusif, hair wash, scalp massage, hair tonic & styling",
-      "is_active": true,
-      "selling_price": 75000
+      "is_active": true
     },
     {
-      "selling_price": 40000,
+      "service_name": "Beard Trim & Precision Shave",
+      "duration_mins": 18,
+      "description": "Rapikan jenggot, kumis, shaving dengan foam hangat & razor tajam",
       "is_active": true,
       "id": "srv-3",
-      "service_name": "Beard Trim & Precision Shave",
-      "description": "Rapikan jenggot, kumis, shaving dengan foam hangat & razor tajam",
-      "duration_mins": 18
+      "selling_price": 40000
     },
     {
-      "id": "srv-4",
       "duration_mins": 18,
+      "is_active": true,
+      "id": "srv-4",
       "service_name": "The Ultimate Grooming (Cut + Shave + Facial Wash)",
       "description": "Paket lengkap perawatan pria premium",
-      "selling_price": 110000,
-      "is_active": true
+      "selling_price": 110000
     }
   ],
   "service_hpp_relations": [
@@ -359,84 +359,99 @@
   ],
   "queues": [
     {
-      "customer_phone": null,
-      "customer_id": null,
-      "source": "WALK_IN",
       "service_id": "srv-1787777622568",
-      "end_time": "2026-08-26T21:02:17.043Z",
-      "queue_date": "2026-08-26",
-      "walk_in_name": "Joko",
-      "notes": "",
-      "status": "COMPLETED",
       "queue_number": 1,
-      "id": "q-1787778087150-234",
+      "notes": "",
       "created_at": "2026-08-26T21:01:27.150Z",
-      "start_time": "2026-08-26T21:01:33.278Z"
-    },
-    {
-      "end_time": null,
-      "id": "q-1787841966797-908",
-      "walk_in_name": null,
-      "queue_number": 1,
-      "service_id": "srv-1",
       "customer_phone": null,
-      "source": "ONLINE",
-      "notes": "",
-      "queue_date": "2026-08-27",
-      "customer_id": "usr-cust-A",
-      "status": "WAITING",
-      "created_at": "2026-08-27T14:46:06.797Z",
-      "start_time": null
+      "id": "q-1787778087150-234",
+      "queue_date": "2026-08-26",
+      "customer_id": null,
+      "walk_in_name": "Joko",
+      "status": "COMPLETED",
+      "end_time": "2026-08-26T21:02:17.043Z",
+      "start_time": "2026-08-26T21:01:33.278Z",
+      "source": "WALK_IN"
     },
     {
-      "end_time": null,
-      "notes": "",
       "queue_date": "2026-08-27",
       "start_time": null,
       "customer_phone": null,
-      "created_at": "2026-08-27T14:51:24.007Z",
-      "source": "ONLINE",
+      "walk_in_name": null,
+      "id": "q-1787841966797-908",
+      "notes": "",
+      "customer_id": "usr-cust-A",
+      "end_time": null,
+      "queue_number": 1,
       "service_id": "srv-1",
+      "source": "ONLINE",
+      "status": "WAITING",
+      "created_at": "2026-08-27T14:46:06.797Z"
+    },
+    {
+      "walk_in_name": null,
+      "queue_date": "2026-08-27",
+      "start_time": null,
       "id": "q-1787842284007-462",
       "customer_id": "usr-cust-A",
-      "queue_number": 2,
+      "end_time": null,
+      "notes": "",
+      "service_id": "srv-1",
+      "source": "ONLINE",
       "status": "WAITING",
-      "walk_in_name": null
+      "created_at": "2026-08-27T14:51:24.007Z",
+      "customer_phone": null,
+      "queue_number": 2
     },
     {
       "customer_phone": null,
+      "start_time": null,
+      "walk_in_name": null,
       "source": "ONLINE",
-      "queue_number": 3,
-      "service_id": "srv-test",
-      "walk_in_name": null,
-      "customer_id": "usr-cust-A",
-      "created_at": "2026-08-27T14:54:47.901Z",
-      "notes": "",
-      "start_time": null,
       "end_time": null,
-      "id": "q-1787842487901-849",
-      "status": "WAITING",
-      "queue_date": "2026-08-27"
-    },
-    {
-      "start_time": null,
-      "id": "q-1787842706957-84",
-      "walk_in_name": null,
-      "created_at": "2026-08-27T14:58:26.957Z",
-      "customer_id": "usr-cust-A",
-      "queue_number": 4,
       "notes": "",
       "status": "WAITING",
       "queue_date": "2026-08-27",
+      "id": "q-1787842487901-849",
+      "created_at": "2026-08-27T14:54:47.901Z",
+      "queue_number": 3,
+      "customer_id": "usr-cust-A",
+      "service_id": "srv-test"
+    },
+    {
+      "walk_in_name": null,
+      "queue_date": "2026-08-27",
       "customer_phone": null,
+      "source": "ONLINE",
+      "start_time": null,
+      "status": "WAITING",
+      "customer_id": "usr-cust-A",
       "service_id": "srv-1",
       "end_time": null,
-      "source": "ONLINE"
+      "created_at": "2026-08-27T14:58:26.957Z",
+      "id": "q-1787842706957-84",
+      "notes": "",
+      "queue_number": 4
     },
     {
       "id": "q-1787842821422-296",
+      "customer_phone": null,
+      "notes": "",
       "queue_date": "2026-08-27",
+      "end_time": null,
+      "source": "ONLINE",
+      "status": "WAITING",
+      "start_time": null,
       "queue_number": 5,
+      "walk_in_name": null,
+      "service_id": "srv-1",
+      "created_at": "2026-08-27T15:00:21.422Z",
+      "customer_id": "usr-cust-A"
+    },
+    {
+      "id": "q-1787844046562-80",
+      "queue_date": "2026-08-27",
+      "queue_number": 6,
       "customer_id": "usr-cust-A",
       "walk_in_name": null,
       "customer_phone": null,
@@ -445,55 +460,64 @@
       "status": "WAITING",
       "start_time": null,
       "end_time": null,
-      "created_at": "2026-08-27T15:00:21.422Z",
+      "created_at": "2026-08-27T15:20:46.562Z",
       "notes": ""
     }
   ],
   "transactions": [],
   "notifications": [
     {
-      "read": false,
-      "message": "Harap tiba di lokasi 15 menit sebelum visual progres antrean penuh. Layanan: Signature Haircut (Standard)",
-      "created_at": "2026-08-27T14:46:06.797Z",
+      "user_id": "usr-cust-A",
+      "type": "REMINDER_15M",
       "id": "notif-1787841966797",
-      "type": "REMINDER_15M",
       "title": "Nomor Antrean Anda: #1",
-      "user_id": "usr-cust-A"
-    },
-    {
-      "type": "REMINDER_15M",
-      "user_id": "usr-cust-A",
-      "title": "Nomor Antrean Anda: #2",
       "read": false,
       "message": "Harap tiba di lokasi 15 menit sebelum visual progres antrean penuh. Layanan: Signature Haircut (Standard)",
-      "id": "notif-1787842284007",
-      "created_at": "2026-08-27T14:51:24.007Z"
+      "created_at": "2026-08-27T14:46:06.797Z"
     },
     {
-      "created_at": "2026-08-27T14:54:47.901Z",
-      "id": "notif-1787842487901",
+      "message": "Harap tiba di lokasi 15 menit sebelum visual progres antrean penuh. Layanan: Signature Haircut (Standard)",
+      "type": "REMINDER_15M",
+      "created_at": "2026-08-27T14:51:24.007Z",
+      "title": "Nomor Antrean Anda: #2",
       "user_id": "usr-cust-A",
+      "read": false,
+      "id": "notif-1787842284007"
+    },
+    {
+      "type": "REMINDER_15M",
       "read": false,
       "message": "Harap tiba di lokasi 15 menit sebelum visual progres antrean penuh. Layanan: Test Cut",
-      "type": "REMINDER_15M",
+      "id": "notif-1787842487901",
+      "user_id": "usr-cust-A",
+      "created_at": "2026-08-27T14:54:47.901Z",
       "title": "Nomor Antrean Anda: #3"
     },
     {
-      "created_at": "2026-08-27T14:58:26.957Z",
-      "id": "notif-1787842706957",
-      "user_id": "usr-cust-A",
-      "title": "Nomor Antrean Anda: #4",
       "read": false,
       "type": "REMINDER_15M",
-      "message": "Harap tiba di lokasi 15 menit sebelum visual progres antrean penuh. Layanan: Signature Haircut (Standard)"
+      "user_id": "usr-cust-A",
+      "id": "notif-1787842706957",
+      "created_at": "2026-08-27T14:58:26.957Z",
+      "message": "Harap tiba di lokasi 15 menit sebelum visual progres antrean penuh. Layanan: Signature Haircut (Standard)",
+      "title": "Nomor Antrean Anda: #4"
     },
     {
+      "message": "Harap tiba di lokasi 15 menit sebelum visual progres antrean penuh. Layanan: Signature Haircut (Standard)",
       "id": "notif-1787842821422",
-      "user_id": "usr-cust-A",
+      "created_at": "2026-08-27T15:00:21.422Z",
       "title": "Nomor Antrean Anda: #5",
+      "type": "REMINDER_15M",
+      "read": false,
+      "user_id": "usr-cust-A"
+    },
+    {
+      "id": "notif-1787844046562",
+      "user_id": "usr-cust-A",
+      "title": "Nomor Antrean Anda: #6",
       "message": "Harap tiba di lokasi 15 menit sebelum visual progres antrean penuh. Layanan: Signature Haircut (Standard)",
       "type": "REMINDER_15M",
-      "created_at": "2026-08-27T15:00:21.422Z",
+      "created_at": "2026-08-27T15:20:46.562Z",
       "read": false
     }
   ],

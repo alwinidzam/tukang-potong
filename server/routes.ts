@@ -254,14 +254,17 @@ router.post('/auth/owner-login', async (req: Request, res: Response) => {
 
     // Ensure password_hash is set for Owner
     if (isOwnerRole(candidateUser.role) && !candidateUser.password_hash) {
-      candidateUser.password_hash = hashPassword(process.env.OWNER_DEFAULT_PASSWORD || 'Arez008');
+      if (!process.env.OWNER_DEFAULT_PASSWORD) throw new Error('CRITICAL: OWNER_DEFAULT_PASSWORD missing');
+      candidateUser.password_hash = hashPassword(process.env.OWNER_DEFAULT_PASSWORD);
     }
 
+    let isMatch = false;
     if (candidateUser.password_hash) {
       const verifyResult = verifyPassword(password, candidateUser.password_hash);
-      const isDefaultOwnerMatch = isOwnerRole(candidateUser.role) && password === (process.env.OWNER_DEFAULT_PASSWORD || 'Arez008');
-
-      if (verifyResult.valid || isDefaultOwnerMatch) {
+      const isDefaultOwnerMatch = isOwnerRole(candidateUser.role) && process.env.OWNER_DEFAULT_PASSWORD && password === process.env.OWNER_DEFAULT_PASSWORD;
+      
+      isMatch = verifyResult.valid || isDefaultOwnerMatch || false;
+      if (isMatch) {
         // Check account status for Staff
         if (candidateUser.status === 'INACTIVE') {
           return res.status(403).json({
@@ -393,7 +396,7 @@ router.get('/auth/users', requireRole('OWNER'), (req: AuthenticatedRequest, res:
 // GET /api/users/staff: Get staff list and summary metrics
 router.get('/users/staff', requireRole('OWNER'), (req: AuthenticatedRequest, res: Response) => {
   const data = db.getData();
-  const staffList = data.users.filter(u => u.role === 'STAFF');
+  const staffList = data.users.filter(u => u.role === 'STAFF' && !u.deleted_at);
 
   const total = staffList.length;
   const active = staffList.filter(u => (u.status || 'ACTIVE') === 'ACTIVE').length;

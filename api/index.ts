@@ -7,7 +7,7 @@ const app = express();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser(process.env.SESSION_SECRET || 'arez_secret_session_key_production_2026'));
+app.use(cookieParser(process.env.SESSION_SECRET));
 
 // Initialize Cloud Firestore Sync
 db.initFirestoreSync().catch(err => {

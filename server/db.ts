@@ -20,7 +20,8 @@ export interface User {
   phone?: string;
   avatar_url?: string;
   total_visits: number;
-  last_visit_at: string | null;
+  last_visit_at?: string | null;
+  deleted_at?: string | null; // Soft-delete tombstone
   favorite_day?: string;
   favorite_hour?: string;
   favorite_service?: string;
@@ -255,9 +256,9 @@ function sanitizeProductionData(raw: DatabaseSchema, existingUsers: User[] = [])
         }
       }
 
-      // Ensure Owner/usr-admin always has valid password hash
       if (u.id === 'usr-admin' && !u.password_hash) {
-        u.password_hash = hashPasswordInternal(process.env.OWNER_DEFAULT_PASSWORD || 'Arez008');
+        if (!process.env.OWNER_DEFAULT_PASSWORD) throw new Error('CRITICAL FATAL ERROR: OWNER_DEFAULT_PASSWORD is missing');
+        u.password_hash = hashPasswordInternal(process.env.OWNER_DEFAULT_PASSWORD);
       }
 
       return u as User;
@@ -281,7 +282,8 @@ function sanitizeProductionData(raw: DatabaseSchema, existingUsers: User[] = [])
     adminUser.username = process.env.OWNER_USERNAME || 'CEO POTONG';
     adminUser.full_name = 'Aris (CEO Arez Barbershop)';
     if (!adminUser.password_hash) {
-      adminUser.password_hash = hashPasswordInternal(process.env.OWNER_DEFAULT_PASSWORD || 'Arez008');
+      if (!process.env.OWNER_DEFAULT_PASSWORD) throw new Error('CRITICAL FATAL ERROR: OWNER_DEFAULT_PASSWORD is missing');
+      adminUser.password_hash = hashPasswordInternal(process.env.OWNER_DEFAULT_PASSWORD);
     }
   }
 
