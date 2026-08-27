@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import os from 'os';
 import { syncToFirestore, loadFromFirestore } from './firebase-admin.js';
 
 export type UserRole = 'OWNER' | 'STAFF' | 'CUSTOMER';
@@ -95,8 +96,14 @@ export interface NotificationLog {
   read: boolean;
 }
 
-const DB_FILE = path.join(process.cwd(), 'arez_data.json');
-const DB_BACKUP_FILE = path.join(process.cwd(), 'arez_data.json.bak');
+const isServerless = process.env.VERCEL || process.env.NODE_ENV === 'production' || process.env.AWS_LAMBDA_FUNCTION_VERSION;
+const DB_FILE = isServerless ? path.join(os.tmpdir(), 'arez_data.json') : path.join(process.cwd(), 'arez_data.json');
+const DB_BACKUP_FILE = isServerless ? path.join(os.tmpdir(), 'arez_data.json.bak') : path.join(process.cwd(), 'arez_data.json.bak');
+
+export function getJakartaDateStr(d?: Date): string {
+  const targetDate = d || new Date();
+  return targetDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' }); // Outputs YYYY-MM-DD
+}
 
 interface DatabaseSchema {
   users: User[];
@@ -106,6 +113,7 @@ interface DatabaseSchema {
   queues: QueueItem[];
   transactions: Transaction[];
   notifications: NotificationLog[];
+  revoked_tokens: string[];
 }
 
 export const DB_PASSWORD_HASH_ITERATIONS = 100000;
@@ -120,7 +128,7 @@ export function hashPasswordInternal(password: string): string {
 // Initial Seed Data matching Arez Barbershop High-End Monochromatic Archetype
 const getInitialSeedData = (): DatabaseSchema => {
   const now = new Date();
-  const todayStr = now.toISOString().split('T')[0];
+  const todayStr = getJakartaDateStr(now);
   const ownerPassword = process.env.OWNER_DEFAULT_PASSWORD || 'Arez008';
 
   const master_hpp: MasterHPP[] = [
@@ -197,6 +205,7 @@ const getInitialSeedData = (): DatabaseSchema => {
     queues,
     transactions,
     notifications,
+    revoked_tokens: [],
   };
 };
 
@@ -331,6 +340,7 @@ function sanitizeProductionData(raw: DatabaseSchema, existingUsers: User[] = [])
     queues: sanitizedQueues,
     transactions: sanitizedTransactions,
     notifications: sanitizedNotifs,
+    revoked_tokens: raw.revoked_tokens || [],
   };
 }
 
@@ -468,10 +478,8 @@ class Database {
       fs.writeFileSync(tempFile, jsonContent, 'utf-8');
       fs.renameSync(tempFile, DB_FILE);
 
-      syncToFirestore(dataToSave).catch(err => {
-        console.warn('[Firestore Mirror Warning]:', err);
-      });
-
+      // Removed: syncToFirestore background call to prevent Vercel 504 timeouts.
+      // API routes MUST call explicit syncSingle...ToFirestore functions for real-time sync.
       return true;
     } catch (e) {
       console.error('[Atomic DB Write Failed]:', e);
@@ -487,16 +495,8 @@ class Database {
   }
 
   public async saveDataAsync(customData?: DatabaseSchema): Promise<boolean> {
-    const dataToSave = customData || this.data;
-    this.saveData(dataToSave);
-    try {
-      await syncToFirestore(dataToSave);
-      this.lastCloudSync = Date.now();
-      return true;
-    } catch (err) {
-      console.warn('[saveDataAsync Firestore Warning]:', err);
-      return false;
-    }
+    // Alias to saveData. Replaces massive blocking batch-syncs with instantaneous local saves.
+    return this.saveData(customData);
   }
 
   public getData(): DatabaseSchema {
@@ -524,6 +524,16 @@ class Database {
 
     if (validNums.length === 0) return 1;
     return Math.max(...validNums) + 1;
+  }
+
+  public async getSafeQueueNumber(dateStr: string): Promise<number> {
+    const localMax = this.getNextQueueNumber(dateStr);
+    try {
+      const { getAtomicQueueNumber } = await import('./firebase-admin.js');
+      return await getAtomicQueueNumber(dateStr, localMax);
+    } catch (_) {
+      return localMax;
+    }
   }
 }
 

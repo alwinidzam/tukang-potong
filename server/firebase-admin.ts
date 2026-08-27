@@ -7,6 +7,7 @@ import {
   setDoc,
   deleteDoc,
   writeBatch,
+  runTransaction,
   Firestore
 } from 'firebase/firestore';
 import fs from 'fs';
@@ -58,6 +59,7 @@ export async function syncToFirestore(data: {
   service_hpp_relations: any[];
   transactions: any[];
   notifications: any[];
+  revoked_tokens?: string[];
 }): Promise<boolean> {
   const db = getFirestoreDb();
   if (!db) return false;
@@ -91,6 +93,10 @@ export async function syncToFirestore(data: {
         batch.set(docRef, item, { merge: true });
       }
       await batch.commit();
+    }
+
+    if (data.revoked_tokens) {
+      await setDoc(doc(db, 'system', 'config'), { revoked_tokens: data.revoked_tokens }, { merge: true });
     }
 
     return true;
@@ -137,6 +143,15 @@ export async function loadFromFirestore(): Promise<any | null> {
     if (totalDocs === 0) {
       return null;
     }
+
+    // Load revoked_tokens from system collection
+    try {
+      const { getDoc } = await import('firebase/firestore');
+      const sysDoc = await getDoc(doc(db, 'system', 'config'));
+      if (sysDoc.exists()) {
+        result.revoked_tokens = sysDoc.data().revoked_tokens || [];
+      }
+    } catch (_) {}
 
     return result;
   } catch (err) {
@@ -255,17 +270,23 @@ export async function syncSingleServiceToFirestore(service: any, relations?: any
     if (Array.isArray(relations)) {
       const relSnap = await getDocs(collection(db, 'service_hpp_relations'));
       const batch = writeBatch(db);
+      let count = 0;
       for (const d of relSnap.docs) {
         if (d.data().service_id === service.id) {
           batch.delete(d.ref);
+          count++;
         }
       }
       for (let i = 0; i < relations.length; i++) {
         const r = relations[i];
-        const rId = `rel-${service.id}-${r.hpp_id}-${i}`;
-        batch.set(doc(db, 'service_hpp_relations', rId), { ...r, id: rId });
+        const rId = `rel-${service.id}-${r.hpp_id}`;
+        const ref = doc(db, 'service_hpp_relations', rId);
+        batch.set(ref, { id: rId, ...r }, { merge: true });
+        count++;
       }
-      await batch.commit();
+      if (count > 0) {
+        await batch.commit();
+      }
     }
     return true;
   } catch (e) {
@@ -366,3 +387,48 @@ export async function syncSingleNotificationToFirestore(notif: any): Promise<boo
     return false;
   }
 }
+
+/**
+ * Instant real-time single Revoked Tokens write to Firestore
+ */
+export async function syncSingleRevokedTokensToFirestore(tokens: string[]): Promise<boolean> {
+  const db = getFirestoreDb();
+  if (!db) return false;
+  try {
+    const docRef = doc(db, 'system', 'config');
+    await setDoc(docRef, { revoked_tokens: tokens }, { merge: true });
+    return true;
+  } catch (e) {
+    console.warn('[Firestore Single Revoked Tokens Write Error]:', e);
+    return false;
+  }
+}
+
+/**
+ * Safely generate a monotonically increasing queue number via atomic transaction
+ */
+export async function getAtomicQueueNumber(dateStr: string, fallbackLocalMax: number): Promise<number> {
+  const db = getFirestoreDb();
+  if (!db) return fallbackLocalMax;
+
+  try {
+    const counterRef = doc(db, 'system', `queue_counter_${dateStr}`);
+    return await runTransaction(db, async (transaction) => {
+      const sfDoc = await transaction.get(counterRef);
+      if (!sfDoc.exists()) {
+        const newMax = Math.max(1, fallbackLocalMax);
+        transaction.set(counterRef, { currentMax: newMax });
+        return newMax;
+      } else {
+        const currentMax = sfDoc.data().currentMax || 0;
+        const nextNum = Math.max(currentMax + 1, fallbackLocalMax);
+        transaction.update(counterRef, { currentMax: nextNum });
+        return nextNum;
+      }
+    });
+  } catch (e) {
+    console.warn('[Firestore Atomic Counter Error]:', e);
+    return fallbackLocalMax;
+  }
+}
+

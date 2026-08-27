@@ -57,6 +57,13 @@ export default function App() {
       if (!isMounted) return;
       if (res.authenticated && res.user) {
         setCurrentUser(res.user);
+      } else {
+        if (localStorage.getItem('arez_user')) {
+          localStorage.removeItem('arez_user');
+          localStorage.removeItem('arez_token');
+          setCurrentUser(null);
+          // Optional: window.location.reload() but changing currentUser should trigger effect to go back to queue view
+        }
       }
     }).catch(() => {});
     return () => {

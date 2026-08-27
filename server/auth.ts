@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { Request, Response, NextFunction } from 'express';
 import { db, User, UserRole } from './db.js';
+import { syncSingleRevokedTokensToFirestore } from './firebase-admin.js';
 
 const SESSION_SECRET = process.env.SESSION_SECRET || 'arez_secret_session_key_production_2026_persistent_token_salt';
 const SESSION_TTL_MS = 365 * 24 * 60 * 60 * 1000; // 365 days (1 year permanent session - eliminates unexpected auto-logout)
@@ -13,9 +14,8 @@ export interface SessionData {
   expiresAt: number;
 }
 
-// In-Memory Active Session Cache + Revocation Store
+// In-Memory Active Session Cache
 const sessions = new Map<string, SessionData>();
-const revokedTokens = new Set<string>();
 
 export const PASSWORD_HASH_ITERATIONS = 100000;
 const HASH_SCHEME = 'pbkdf2_sha256';
@@ -45,7 +45,7 @@ export function generateSignedToken(userId: string, role: UserRole, expiresAt = 
 export function verifySignedToken(token: string): { valid: boolean; userId: string; role: UserRole } | null {
   try {
     if (!token || typeof token !== 'string') return null;
-    if (revokedTokens.has(token)) return null;
+    if ((db.getData().revoked_tokens || []).includes(token)) return null;
 
     // Support arez_v2 signed format
     if (token.startsWith('arez_v2.')) {
@@ -225,7 +225,11 @@ export function getSession(sessionId: string): SessionData | null {
  * Revoke/destroy an active session
  */
 export function destroySession(sessionId: string): void {
-  revokedTokens.add(sessionId);
+  const data = db.getData();
+  if (!data.revoked_tokens) data.revoked_tokens = [];
+  data.revoked_tokens.push(sessionId);
+  db.saveData();
+  syncSingleRevokedTokensToFirestore(data.revoked_tokens);
   sessions.delete(sessionId);
 }
 
@@ -233,11 +237,21 @@ export function destroySession(sessionId: string): void {
  * Invalidate all active sessions for a specific user ID
  */
 export function destroyUserSessions(userId: string): void {
+  const data = db.getData();
+  if (!data.revoked_tokens) data.revoked_tokens = [];
+  let changed = false;
+  
   for (const [sessionId, session] of sessions.entries()) {
     if (session.userId === userId) {
-      revokedTokens.add(sessionId);
+      data.revoked_tokens.push(sessionId);
       sessions.delete(sessionId);
+      changed = true;
     }
+  }
+  
+  if (changed) {
+    db.saveData();
+    syncSingleRevokedTokensToFirestore(data.revoked_tokens);
   }
 }
 

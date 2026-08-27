@@ -1,5 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { db, User, QueueItem, Transaction, MasterHPP, Service, NotificationLog } from './db.js';
+import { db, User, QueueItem, Transaction, MasterHPP, Service, NotificationLog, getJakartaDateStr } from './db.js';
 import {
   authenticate,
   requireAuth,
@@ -190,7 +190,7 @@ router.get('/auth/me', (req: AuthenticatedRequest, res: Response) => {
 });
 
 // POST /api/auth/owner-login (also handles STAFF login): Secure Login with Password Hashing & Status Check
-router.post('/auth/owner-login', (req: Request, res: Response) => {
+router.post('/auth/owner-login', async (req: Request, res: Response) => {
   const ip = req.ip || req.socket.remoteAddress || 'unknown';
   const rateLimit = checkRateLimit(ip);
   if (!rateLimit.allowed) {
@@ -278,6 +278,7 @@ router.post('/auth/owner-login', (req: Request, res: Response) => {
           candidateUser.password_hash = hashPassword(password);
         }
         db.saveData();
+        await syncSingleUserToFirestore(candidateUser);
 
         const session = createSession(candidateUser.id, candidateUser.role);
 
@@ -687,7 +688,7 @@ router.get('/queues', async (req: Request, res: Response) => {
     }
   } catch (_) {}
 
-  const dateStr = (req.query.date as string) || new Date().toISOString().split('T')[0];
+  const dateStr = (req.query.date as string) || getJakartaDateStr();
 
   const queues = (data.queues || [])
     .filter(q => q.queue_date === dateStr || q.status === 'IN_PROGRESS' || q.status === 'WAITING')
@@ -715,7 +716,7 @@ router.get('/queues', async (req: Request, res: Response) => {
 router.post('/queues', async (req: AuthenticatedRequest, res: Response) => {
   const { customer_id, walk_in_name, customer_phone, service_id, source, notes } = req.body;
   const data = db.getData();
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getJakartaDateStr();
 
   // Validation
   const service = data.services.find(s => s.id === service_id) || data.services[0];
@@ -743,7 +744,7 @@ router.post('/queues', async (req: AuthenticatedRequest, res: Response) => {
     return res.status(400).json({ error: 'Nama pelanggan atau akun terdaftar wajib diisi.' });
   }
 
-  const queueNumber = db.getNextQueueNumber(todayStr);
+  const queueNumber = await db.getSafeQueueNumber(todayStr);
 
   const newQueue: QueueItem = {
     id: `q-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -775,6 +776,7 @@ router.post('/queues', async (req: AuthenticatedRequest, res: Response) => {
       read: false,
     };
     data.notifications.push(notif);
+    await syncSingleNotificationToFirestore(notif);
   }
 
   db.saveData();
@@ -798,14 +800,7 @@ router.post('/queues/:id/start', requireRole('OWNER', 'STAFF'), async (req: Auth
     return res.status(400).json({ error: 'Antrean ini sudah selesai dan tidak dapat dimulai ulang.' });
   }
 
-  // Concurrency Guard: Reset any other IN_PROGRESS queue back to WAITING atomically
-  for (const q of data.queues) {
-    if (q.status === 'IN_PROGRESS' && q.id !== id) {
-      q.status = 'WAITING';
-      q.start_time = null;
-      await syncSingleQueueToFirestore(q);
-    }
-  }
+  // Concurrency Guard removed to allow Multiple Staff/Chairs to process queues simultaneously.
 
   queue.status = 'IN_PROGRESS';
   queue.start_time = new Date().toISOString();
@@ -891,6 +886,11 @@ router.post('/queues/:id/complete', requireRole('OWNER', 'STAFF'), async (req: A
 
   db.saveData();
   await syncSingleQueueToFirestore(queue);
+  if (customer) {
+    await syncSingleUserToFirestore(customer);
+  }
+  await syncSingleTransactionToFirestore(newTx);
+  
   broadcastSSE('QUEUE_COMPLETED', { queue, transaction: newTx });
 
   res.json({ success: true, queue, transaction: newTx });
@@ -1336,7 +1336,16 @@ router.delete('/services/:id', requireRole('OWNER'), async (req: AuthenticatedRe
 // -------------------------------------------------------------
 router.get('/transactions', requireRole('OWNER', 'STAFF'), (req: AuthenticatedRequest, res: Response) => {
   const data = db.getData();
-  res.json(data.transactions);
+  const limit = Math.min(1000, Number(req.query.limit) || 100);
+  const offset = Math.max(0, Number(req.query.offset) || 0);
+  
+  // Sort transactions by created_at DESC to always show latest first
+  const sortedTxs = [...data.transactions].sort((a, b) => 
+    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
+  
+  const pagedTxs = sortedTxs.slice(offset, offset + limit);
+  res.json(pagedTxs);
 });
 
 router.post('/transactions/direct-checkout', requireRole('OWNER', 'STAFF'), async (req: AuthenticatedRequest, res: Response) => {
@@ -1390,7 +1399,7 @@ router.post('/transactions/direct-checkout', requireRole('OWNER', 'STAFF'), asyn
 router.get('/analytics/recap', requireRole('OWNER'), (req: AuthenticatedRequest, res: Response) => {
   const data = db.getData();
   const now = new Date();
-  const todayStr = now.toISOString().split('T')[0];
+  const todayStr = getJakartaDateStr(now);
 
   // Daily Recap (Today)
   const todayTxs = data.transactions.filter(t => t.created_at.startsWith(todayStr));
@@ -1404,7 +1413,7 @@ router.get('/analytics/recap', requireRole('OWNER'), (req: AuthenticatedRequest,
   for (let i = 6; i >= 0; i--) {
     const d = new Date(now);
     d.setDate(d.getDate() - i);
-    const dStr = d.toISOString().split('T')[0];
+    const dStr = getJakartaDateStr(d);
     const dayName = d.toLocaleDateString('id-ID', { weekday: 'short' });
     const dayTxs = data.transactions.filter(t => t.created_at.startsWith(dStr));
     const gross = dayTxs.reduce((acc, t) => acc + t.total_price, 0);

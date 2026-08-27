@@ -29,7 +29,7 @@ function getAuthHeaders(extraHeaders: Record<string, string> = {}): Record<strin
 
 async function safeJson(res: Response, fallbackError = 'Terjadi kesalahan pada server'): Promise<any> {
   try {
-    const data = await res.json();
+    const data = await safeJson(res);
     return data;
   } catch (_) {
     const text = await res.text().catch(() => '');
@@ -50,7 +50,7 @@ export const api = {
       if (!res.ok) {
         return { authenticated: false, user: null };
       }
-      return res.json();
+      return safeJson(res);
     } catch (e) {
       return { authenticated: false, user: null };
     }
@@ -63,7 +63,7 @@ export const api = {
       body: JSON.stringify({ username, password }),
       credentials: 'include',
     });
-    const data = await res.json();
+    const data = await safeJson(res);
     if (!res.ok) throw new Error(data.error || 'Gagal login owner');
     if (data.token) {
       localStorage.setItem('arez_token', data.token);
@@ -84,7 +84,7 @@ export const api = {
       body: JSON.stringify(payload),
       credentials: 'include',
     });
-    const data = await res.json();
+    const data = await safeJson(res);
     if (!res.ok) throw new Error(data.error || 'Gagal login Google SSO');
     if (data.token) {
       localStorage.setItem('arez_token', data.token);
@@ -111,10 +111,10 @@ export const api = {
       credentials: 'include',
     });
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || 'Gagal mengambil daftar pengguna');
+      const data = await safeJson(res, 'Gagal mengambil daftar pengguna');
+      throw new Error(data.error || 'Gagal mengambil daftar pengguna');
     }
-    return res.json();
+    return safeJson(res, 'Gagal mengambil daftar pengguna');
   },
 
   // ----------------------------------------------------------------------
@@ -126,10 +126,10 @@ export const api = {
       credentials: 'include',
     });
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
+      const err = await safeJson(res, 'Gagal mengambil data staf');
       throw new Error(err.error || 'Gagal mengambil data staf');
     }
-    return res.json();
+    return safeJson(res, 'Gagal mengambil data staf');
   },
 
   async createStaff(payload: StaffCreatePayload): Promise<{ success: boolean; user: User; message: string }> {
@@ -140,10 +140,10 @@ export const api = {
       body: JSON.stringify(payload),
     });
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
+      const err = await safeJson(res, 'Gagal membuat akun staf baru');
       throw new Error(err.error || 'Gagal membuat akun staf baru');
     }
-    return res.json();
+    return safeJson(res, 'Gagal membuat akun staf baru');
   },
 
   async getStaffDetail(id: string): Promise<{ user: User }> {
@@ -152,10 +152,10 @@ export const api = {
       credentials: 'include',
     });
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
+      const err = await safeJson(res);
       throw new Error(err.error || 'Gagal mengambil detail staf');
     }
-    return res.json();
+    return safeJson(res);
   },
 
   async updateStaff(id: string, payload: StaffUpdatePayload): Promise<{ success: boolean; user: User; message: string }> {
@@ -166,10 +166,10 @@ export const api = {
       body: JSON.stringify(payload),
     });
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
+      const err = await safeJson(res);
       throw new Error(err.error || 'Gagal memperbarui data staf');
     }
-    return res.json();
+    return safeJson(res);
   },
 
   async updateStaffStatus(id: string, status: 'ACTIVE' | 'INACTIVE'): Promise<{ success: boolean; user: User; message: string }> {
@@ -180,10 +180,10 @@ export const api = {
       body: JSON.stringify({ status }),
     });
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
+      const err = await safeJson(res);
       throw new Error(err.error || 'Gagal mengubah status staf');
     }
-    return res.json();
+    return safeJson(res);
   },
 
   async resetStaffPassword(id: string, password: string): Promise<{ success: boolean; message: string }> {
@@ -194,10 +194,10 @@ export const api = {
       body: JSON.stringify({ password }),
     });
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
+      const err = await safeJson(res);
       throw new Error(err.error || 'Gagal mereset password staf');
     }
-    return res.json();
+    return safeJson(res);
   },
 
   async deleteStaff(id: string): Promise<{ success: boolean; message: string }> {
@@ -207,10 +207,10 @@ export const api = {
       credentials: 'include',
     });
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
+      const err = await safeJson(res);
       throw new Error(err.error || 'Gagal menghapus akun staf');
     }
-    return res.json();
+    return safeJson(res);
   },
 
   // ----------------------------------------------------------------------
@@ -224,7 +224,7 @@ export const api = {
         credentials: 'include',
       });
       if (!res.ok) return [];
-      return res.json();
+      return safeJson(res);
     } catch (_) {
       return [];
     }
@@ -244,7 +244,7 @@ export const api = {
       body: JSON.stringify(payload),
       credentials: 'include',
     });
-    const data = await res.json();
+    const data = await safeJson(res);
     if (!res.ok) throw new Error(data.error || 'Gagal mendaftar antrean');
     return data;
   },
@@ -255,7 +255,7 @@ export const api = {
       headers: getAuthHeaders(),
       credentials: 'include',
     });
-    const data = await res.json();
+    const data = await safeJson(res);
     if (!res.ok) throw new Error(data.error || 'Gagal memulai antrean');
     return data;
   },
@@ -275,7 +275,7 @@ export const api = {
       body: JSON.stringify(payload),
       credentials: 'include',
     });
-    const data = await res.json();
+    const data = await safeJson(res);
     if (!res.ok) throw new Error(data.error || 'Gagal menyelesaikan antrean');
     return data;
   },
@@ -286,7 +286,7 @@ export const api = {
       headers: getAuthHeaders(),
       credentials: 'include',
     });
-    const data = await res.json();
+    const data = await safeJson(res);
     if (!res.ok) throw new Error(data.error || 'Gagal melewati antrean');
     return data;
   },
@@ -297,7 +297,7 @@ export const api = {
       headers: getAuthHeaders(),
       credentials: 'include',
     });
-    const data = await res.json();
+    const data = await safeJson(res);
     if (!res.ok) throw new Error(data.error || 'Gagal membatalkan antrean');
     return data;
   },
@@ -312,7 +312,7 @@ export const api = {
         credentials: 'include',
       });
       if (!res.ok) return [];
-      return res.json();
+      return safeJson(res);
     } catch (_) {
       return [];
     }
@@ -391,7 +391,7 @@ export const api = {
         credentials: 'include',
       });
       if (!res.ok) return [];
-      return res.json();
+      return safeJson(res);
     } catch (_) {
       return [];
     }
@@ -442,14 +442,14 @@ export const api = {
   // ----------------------------------------------------------------------
   // Transactions & Direct POS
   // ----------------------------------------------------------------------
-  async getTransactions(): Promise<Transaction[]> {
+  async getTransactions(limit: number = 100): Promise<Transaction[]> {
     try {
-      const res = await fetch(`${API_BASE}/transactions`, {
+      const res = await fetch(`${API_BASE}/transactions?limit=${limit}`, {
         headers: getAuthHeaders(),
         credentials: 'include',
       });
       if (!res.ok) return [];
-      return res.json();
+      return safeJson(res);
     } catch (_) {
       return [];
     }
@@ -470,7 +470,7 @@ export const api = {
       body: JSON.stringify(payload),
       credentials: 'include',
     });
-    const data = await res.json();
+    const data = await safeJson(res);
     if (!res.ok) throw new Error(data.error || 'Gagal memproses transaksi kasir');
     return data;
   },
@@ -490,7 +490,7 @@ export const api = {
         monthly: { month: '', gross: 0, hpp: 0, net: 0, heads: 0, margin_percent: 0, top_services: [] },
       };
     }
-    return res.json();
+    return safeJson(res);
   },
 
   // ----------------------------------------------------------------------
@@ -504,7 +504,7 @@ export const api = {
     if (!res.ok) {
       return { customers: [], total_customers: 0, retention_alerts_count: 0 };
     }
-    return res.json();
+    return safeJson(res);
   },
 
   async sendRetentionPush(userId: string, message?: string): Promise<{ success: boolean; notification: NotificationLog }> {
@@ -514,7 +514,7 @@ export const api = {
       body: JSON.stringify({ user_id: userId, message }),
       credentials: 'include',
     });
-    const data = await res.json();
+    const data = await safeJson(res);
     if (!res.ok) throw new Error(data.error || 'Gagal mengirim push notifikasi');
     return data;
   },
@@ -525,6 +525,6 @@ export const api = {
       credentials: 'include',
     });
     if (!res.ok) return [];
-    return res.json();
+    return safeJson(res);
   },
 };
