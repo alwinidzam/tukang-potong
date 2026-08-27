@@ -731,10 +731,8 @@ router.post('/queues', async (req: AuthenticatedRequest, res: Response) => {
     verifiedCustomerId = req.user.id;
   } else if (req.user?.role === 'OWNER' && customer_id) {
     verifiedCustomerId = customer_id;
-  } else if (customer_id) {
-    // If not authenticated yet but customer_id was supplied, verify customer exists
-    const existing = data.users.find(u => u.id === customer_id);
-    if (existing) verifiedCustomerId = existing.id;
+  } else if (req.user?.role === 'STAFF' && customer_id) {
+    verifiedCustomerId = customer_id;
   }
 
   const cleanWalkInName = typeof walk_in_name === 'string' ? walk_in_name.trim() : null;
