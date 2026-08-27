@@ -748,7 +748,7 @@ router.post('/queues', async (req: AuthenticatedRequest, res: Response) => {
   }
 
   const queueNumber = await db.getSafeQueueNumber(todayStr);
-
+  const targetCustomer = verifiedCustomerId ? data.users.find(u => u.id === verifiedCustomerId) : null;
   const newQueue: QueueItem = {
     id: `q-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
     queue_date: todayStr,
@@ -757,6 +757,10 @@ router.post('/queues', async (req: AuthenticatedRequest, res: Response) => {
     walk_in_name: cleanWalkInName,
     customer_phone: cleanPhone,
     service_id: service.id,
+    service_name: service.service_name,
+    service_price: service.selling_price,
+    service_duration: service.duration_mins,
+    customer_name: targetCustomer ? targetCustomer.full_name : cleanWalkInName || 'Pelanggan',
     source: source === 'ONLINE' || source === 'WALK_IN' ? source : (verifiedCustomerId ? 'ONLINE' : 'WALK_IN'),
     status: 'WAITING',
     start_time: null,

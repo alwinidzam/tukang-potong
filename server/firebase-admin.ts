@@ -199,9 +199,8 @@ export async function loadQueuesFromFirestore(): Promise<any[] | null> {
   const db = getFirestoreDb();
   if (!db) return null;
   try {
-    const { query, where, collection, getDocs } = await import('firebase/firestore');
-    const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
-    const q = query(collection(db, 'queues'), where('queue_date', '==', todayStr));
+    const { query, orderBy, limit, collection, getDocs } = await import('firebase/firestore');
+    const q = query(collection(db, 'queues'), orderBy('created_at', 'desc'), limit(50));
     const snap = await getDocs(q);
     return snap.docs.map((d) => d.data());
   } catch (e) {

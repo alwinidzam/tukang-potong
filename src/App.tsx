@@ -174,10 +174,8 @@ export default function App() {
     // 1. Direct Cloud Firestore Real-Time WebSocket Engine (<100ms sync)
     try {
       if (firestoreDb) {
-        const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
-        
-        // OPTIMIZATION: Only listen to TODAY's queues to save massive quota
-        const queuesQuery = query(collection(firestoreDb, 'queues'), where('queue_date', '==', todayStr));
+        // OPTIMIZATION: Listen to 50 latest queues so active queues are never dropped across midnight or timezone boundaries
+        const queuesQuery = query(collection(firestoreDb, 'queues'), orderBy('created_at', 'desc'), limit(50));
         unsubscribeQueues = onSnapshot(
           queuesQuery,
           (snapshot) => {
@@ -188,6 +186,7 @@ export default function App() {
               }
             });
             const freshQueues = snapshot.docs.map(d => d.data() as any);
+            freshQueues.sort((a, b) => (Number(a.queue_number) || 0) - (Number(b.queue_number) || 0));
             setQueues(freshQueues);
           },
           (error) => {
