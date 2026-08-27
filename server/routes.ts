@@ -34,11 +34,11 @@ router.use((req: Request, res: Response, next: NextFunction) => {
   authenticate(req as AuthenticatedRequest, res, next);
 });
 
-// Ensure fresh Cloud Firestore data is available for all requests
+// Ensure fresh Cloud Firestore data is available for all requests (DISABLED to prevent wiping local memory and quota limit)
 router.use(async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    await db.ensureFreshData();
-  } catch (_) {}
+  // try {
+  //   await db.ensureFreshData();
+  // } catch (_) {}
   next();
 });
 

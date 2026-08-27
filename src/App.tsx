@@ -184,7 +184,8 @@ export default function App() {
                 playQueueCallSound();
               }
             });
-            loadAllData();
+            const freshQueues = snapshot.docs.map(d => d.data() as any);
+            setQueues(freshQueues);
           },
           (error) => {
             console.warn('[Firestore Real-Time Queue Note]:', error);
@@ -193,40 +194,48 @@ export default function App() {
 
         unsubscribeNotifs = onSnapshot(
           collection(firestoreDb, 'notifications'),
-          () => {
-            loadAllData();
+          (snapshot) => {
+            const data = snapshot.docs.map(d => d.data() as any);
+            // We rely on getNotifications via API for current user, so just trigger a lightweight check
+            if (currentUser && currentUser.role === 'CUSTOMER') {
+              api.getNotifications(currentUser.id).then(notifs => {
+                const unread = notifs.filter((n) => !n.read).length;
+                setUnreadNotifsCount(unread);
+              }).catch(()=>{});
+            }
           },
           () => {}
         );
 
         unsubscribeHPP = onSnapshot(
           collection(firestoreDb, 'master_hpp'),
-          () => {
-            loadAllData();
+          (snapshot) => {
+            setHppList(snapshot.docs.map(d => d.data() as any));
           },
           () => {}
         );
 
         unsubscribeServices = onSnapshot(
           collection(firestoreDb, 'services'),
-          () => {
-            loadAllData();
+          (snapshot) => {
+            setServices(snapshot.docs.map(d => d.data() as any));
           },
           () => {}
         );
 
         unsubscribeTransactions = onSnapshot(
           collection(firestoreDb, 'transactions'),
-          () => {
-            loadAllData();
+          (snapshot) => {
+            setTransactions(snapshot.docs.map(d => d.data() as any));
           },
           () => {}
         );
 
         unsubscribeUsers = onSnapshot(
           collection(firestoreDb, 'users'),
-          () => {
-            loadAllData();
+          (snapshot) => {
+            // users aren't directly set in global state besides currentUser, but staff can be fetched
+            // We'll leave this empty to prevent loadAllData spam. The UI fetches when opening staff tab.
           },
           () => {}
         );
@@ -245,18 +254,6 @@ export default function App() {
             const parsed = JSON.parse(event.data);
             if (parsed.type === 'QUEUE_STARTED') {
               playQueueCallSound();
-              loadAllData();
-            } else if (
-              parsed.type === 'QUEUE_COMPLETED' ||
-              parsed.type === 'QUEUE_SKIPPED' ||
-              parsed.type === 'QUEUE_ADDED' ||
-              parsed.type === 'STAFF_UPDATED' ||
-              parsed.type === 'HPP_UPDATED' ||
-              parsed.type === 'SERVICES_UPDATED' ||
-              parsed.type === 'TRANSACTION_CREATED' ||
-              parsed.type === 'NOTIFICATION_SENT'
-            ) {
-              loadAllData();
             }
           } catch (_) {}
         };
@@ -282,8 +279,8 @@ export default function App() {
     window.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', handleVisibilityChange);
 
-    // 4. Fast 3-Second Smart Polling Safety Net
-    const interval = setInterval(loadAllData, 3000);
+    // 4. Fast 3-Second Smart Polling Safety Net (DISABLED TO PREVENT FIREBASE QUOTA DDOS)
+    // const interval = setInterval(loadAllData, 3000);
 
     // 5. Marathon Mode: Screen Wake Lock (keeps counter/tablet screen awake 24/7 without timeout)
     let wakeLockSentinel: any = null;
@@ -317,7 +314,7 @@ export default function App() {
       window.removeEventListener('focus', handleVisibilityChange);
       document.removeEventListener('visibilitychange', handleWakeLockVisibility);
       wakeLockSentinel?.release().catch(() => {});
-      clearInterval(interval);
+      // clearInterval(interval);
     };
   }, [loadAllData]);
 
