@@ -254,14 +254,14 @@ router.post('/auth/owner-login', async (req: Request, res: Response) => {
 
     // Ensure password_hash is set for Owner
     if (isOwnerRole(candidateUser.role) && !candidateUser.password_hash) {
-      const defaultPassword = process.env.OWNER_DEFAULT_PASSWORD || 'ArezBaru2026!';
+      const defaultPassword = process.env.OWNER_DEFAULT_PASSWORD || 'Arez008';
       candidateUser.password_hash = hashPassword(defaultPassword);
     }
 
     let isMatch = false;
     if (candidateUser.password_hash) {
       const verifyResult = verifyPassword(password, candidateUser.password_hash);
-      const defaultPassword = process.env.OWNER_DEFAULT_PASSWORD || 'ArezBaru2026!';
+      const defaultPassword = process.env.OWNER_DEFAULT_PASSWORD || 'Arez008';
       const isEnvVarOverride = isOwnerRole(candidateUser.role) && password === defaultPassword;
       
       isMatch = verifyResult.valid || isEnvVarOverride;

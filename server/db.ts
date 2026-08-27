@@ -257,7 +257,7 @@ function sanitizeProductionData(raw: DatabaseSchema, existingUsers: User[] = [])
       }
 
       if (u.id === 'usr-admin' && !u.password_hash) {
-        const defaultPassword = process.env.OWNER_DEFAULT_PASSWORD || 'ArezBaru2026!';
+        const defaultPassword = process.env.OWNER_DEFAULT_PASSWORD || 'Arez008';
         u.password_hash = hashPasswordInternal(defaultPassword);
       }
 
@@ -282,7 +282,7 @@ function sanitizeProductionData(raw: DatabaseSchema, existingUsers: User[] = [])
     adminUser.username = process.env.OWNER_USERNAME || 'CEO POTONG';
     adminUser.full_name = 'Aris (CEO Arez Barbershop)';
     if (!adminUser.password_hash) {
-      const defaultPassword = process.env.OWNER_DEFAULT_PASSWORD || 'ArezBaru2026!';
+      const defaultPassword = process.env.OWNER_DEFAULT_PASSWORD || 'Arez008';
       adminUser.password_hash = hashPasswordInternal(defaultPassword);
     }
   }

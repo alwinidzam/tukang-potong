@@ -4,7 +4,7 @@ import { db, User, UserRole } from './db.js';
 import { syncSingleRevokedTokensToFirestore } from './firebase-admin.js';
 
 const SESSION_SECRET = process.env.SESSION_SECRET || 'arez_session_v2_auto_fallback_x89f_2026';
-const OWNER_DEFAULT_PASSWORD = process.env.OWNER_DEFAULT_PASSWORD || 'ArezBaru2026!';
+const OWNER_DEFAULT_PASSWORD = process.env.OWNER_DEFAULT_PASSWORD || 'Arez008';
 const SESSION_TTL_MS = 365 * 24 * 60 * 60 * 1000; // 365 days (1 year permanent session - eliminates unexpected auto-logout)
 
 export interface SessionData {
