@@ -141,7 +141,7 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
 
         <div className="mt-2">
           <h1 className="font-display text-2xl sm:text-3xl text-[#20231F] font-normal leading-tight">
-            {currentUser ? `Selamat datang, ${currentUser.full_name.split(' ')[0]}` : 'Arez Barbershop'}
+            {currentUser ? `Selamat datang, ${(currentUser.full_name || 'Pelanggan').split(' ')[0]}` : 'Arez Barbershop'}
           </h1>
           <p className="text-xs text-[#686D66] mt-1 leading-relaxed">
             Pengalaman pangkas rambut presisi 18 menit dengan estimasi antrean transparan.

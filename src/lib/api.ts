@@ -29,7 +29,7 @@ function getAuthHeaders(extraHeaders: Record<string, string> = {}): Record<strin
 
 async function safeJson(res: Response, fallbackError = 'Terjadi kesalahan pada server'): Promise<any> {
   try {
-    const data = await safeJson(res);
+    const data = await res.json();
     return data;
   } catch (_) {
     const text = await res.text().catch(() => '');
