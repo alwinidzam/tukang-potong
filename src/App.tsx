@@ -19,7 +19,7 @@ import { AnalyticsView } from './components/AnalyticsView';
 import { CRMBehaviorView } from './components/CRMBehaviorView';
 import { PWAInstallBanner } from './components/PWAInstallBanner';
 import { playQueueCallSound } from './lib/audio';
-import { collection, onSnapshot } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, orderBy, limit } from 'firebase/firestore';
 import { db as firestoreDb } from './lib/firebase';
 
 export default function App() {
@@ -168,15 +168,18 @@ export default function App() {
     let unsubscribeHPP: (() => void) | null = null;
     let unsubscribeServices: (() => void) | null = null;
     let unsubscribeTransactions: (() => void) | null = null;
-    let unsubscribeUsers: (() => void) | null = null;
     let eventSource: EventSource | null = null;
     let sseRetryTimer: any = null;
 
     // 1. Direct Cloud Firestore Real-Time WebSocket Engine (<100ms sync)
     try {
       if (firestoreDb) {
+        const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
+        
+        // OPTIMIZATION: Only listen to TODAY's queues to save massive quota
+        const queuesQuery = query(collection(firestoreDb, 'queues'), where('queue_date', '==', todayStr));
         unsubscribeQueues = onSnapshot(
-          collection(firestoreDb, 'queues'),
+          queuesQuery,
           (snapshot) => {
             snapshot.docChanges().forEach((change) => {
               const data = change.doc.data();
@@ -192,20 +195,21 @@ export default function App() {
           }
         );
 
-        unsubscribeNotifs = onSnapshot(
-          collection(firestoreDb, 'notifications'),
-          (snapshot) => {
-            const data = snapshot.docs.map(d => d.data() as any);
-            // We rely on getNotifications via API for current user, so just trigger a lightweight check
-            if (currentUser && currentUser.role === 'CUSTOMER') {
-              api.getNotifications(currentUser.id).then(notifs => {
-                const unread = notifs.filter((n) => !n.read).length;
-                setUnreadNotifsCount(unread);
-              }).catch(()=>{});
-            }
-          },
-          () => {}
-        );
+        // OPTIMIZATION: Only listen to current user's unread notifications
+        if (currentUser) {
+           const notifQuery = query(
+             collection(firestoreDb, 'notifications'), 
+             where('user_id', '==', currentUser.id),
+             where('read', '==', false)
+           );
+           unsubscribeNotifs = onSnapshot(
+             notifQuery,
+             (snapshot) => {
+               setUnreadNotifsCount(snapshot.docs.length);
+             },
+             () => {}
+           );
+        }
 
         unsubscribeHPP = onSnapshot(
           collection(firestoreDb, 'master_hpp'),
@@ -223,22 +227,17 @@ export default function App() {
           () => {}
         );
 
+        // OPTIMIZATION: Only listen to the 50 most recent transactions to prevent unbounded DB reads
+        const trxQuery = query(collection(firestoreDb, 'transactions'), orderBy('created_at', 'desc'), limit(50));
         unsubscribeTransactions = onSnapshot(
-          collection(firestoreDb, 'transactions'),
+          trxQuery,
           (snapshot) => {
             setTransactions(snapshot.docs.map(d => d.data() as any));
           },
           () => {}
         );
 
-        unsubscribeUsers = onSnapshot(
-          collection(firestoreDb, 'users'),
-          (snapshot) => {
-            // users aren't directly set in global state besides currentUser, but staff can be fetched
-            // We'll leave this empty to prevent loadAllData spam. The UI fetches when opening staff tab.
-          },
-          () => {}
-        );
+        // Removed users onSnapshot entirely to save quota. Staff tab fetches via API.
       }
     } catch (e) {
       console.warn('[Firestore Setup Note]:', e);
@@ -307,7 +306,6 @@ export default function App() {
       unsubscribeHPP?.();
       unsubscribeServices?.();
       unsubscribeTransactions?.();
-      unsubscribeUsers?.();
       eventSource?.close();
       clearTimeout(sseRetryTimer);
       window.removeEventListener('visibilitychange', handleVisibilityChange);
