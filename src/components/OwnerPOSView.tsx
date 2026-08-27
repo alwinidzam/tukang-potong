@@ -54,8 +54,8 @@ export const OwnerPOSView: React.FC<OwnerPOSViewProps> = ({
 
   // Checkout Form State
   const [checkoutPaymentMethod, setCheckoutPaymentMethod] = useState<'CASH' | 'QRIS' | 'DEBIT' | 'TRANSFER'>('CASH');
-  const [checkoutDiscount, setCheckoutDiscount] = useState<number>(0);
-  const [checkoutTax, setCheckoutTax] = useState<number>(0);
+  const [checkoutDiscount, setCheckoutDiscount] = useState<number | ''>(0);
+  const [checkoutTax, setCheckoutTax] = useState<number | ''>(0);
   const [cashGiven, setCashGiven] = useState<string>('');
   const [checkoutSubmitting, setCheckoutSubmitting] = useState(false);
 
@@ -647,7 +647,7 @@ export const OwnerPOSView: React.FC<OwnerPOSViewProps> = ({
                   type="number"
                   min="0"
                   value={checkoutDiscount}
-                  onChange={(e) => setCheckoutDiscount(Number(e.target.value) || 0)}
+                  onChange={(e) => setCheckoutDiscount(e.target.value === '' ? '' : Number(e.target.value))}
                   className="w-full px-3 py-2 bg-[#FFFFFF] border border-[#E5E5DF] rounded-[8px] text-xs text-[#20231F] focus:outline-none focus:border-[#26362E]"
                 />
               </div>
@@ -659,7 +659,7 @@ export const OwnerPOSView: React.FC<OwnerPOSViewProps> = ({
                   type="number"
                   min="0"
                   value={checkoutTax}
-                  onChange={(e) => setCheckoutTax(Number(e.target.value) || 0)}
+                  onChange={(e) => setCheckoutTax(e.target.value === '' ? '' : Number(e.target.value))}
                   className="w-full px-3 py-2 bg-[#FFFFFF] border border-[#E5E5DF] rounded-[8px] text-xs text-[#20231F] focus:outline-none focus:border-[#26362E]"
                 />
               </div>

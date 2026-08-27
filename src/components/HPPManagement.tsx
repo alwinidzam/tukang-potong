@@ -26,9 +26,11 @@ export const HPPManagement: React.FC<HPPManagementProps> = ({
   // Master HPP CRUD state
   const [showAddHPPModal, setShowAddHPPModal] = useState(false);
   const [editingHPP, setEditingHPP] = useState<MasterHPP | null>(null);
+  const [itemType, setItemType] = useState('Bahan Baku & Steril');
   const [itemName, setItemName] = useState('');
-  const [unitCost, setUnitCost] = useState<number>(1500);
+  const [unitCost, setUnitCost] = useState<number | ''>(1500);
   const [unitType, setUnitType] = useState('pcs');
+  const [description, setDescription] = useState('');
   const [savingHPP, setSavingHPP] = useState(false);
 
   // Service Recipe Assignment Modal
@@ -349,17 +351,17 @@ export const HPPManagement: React.FC<HPPManagementProps> = ({
                     className="w-full px-3 py-2 bg-[#FFFFFF] border border-[#E5E5DF] rounded-[8px] text-xs text-[#20231F] focus:outline-none focus:border-[#26362E]"
                   />
                 </div>
-                <div>
+                <div className="flex-1">
                   <label className="block text-xs font-medium text-[#20231F] mb-1">
-                    Biaya per Satuan (Rp)
+                    Biaya per Satuan (Rp) <span className="text-[#A84B45]">*</span>
                   </label>
                   <input
                     type="number"
                     required
                     min="0"
                     value={unitCost}
-                    onChange={(e) => setUnitCost(Number(e.target.value) || 0)}
-                    className="w-full px-3 py-2 bg-[#FFFFFF] border border-[#E5E5DF] rounded-[8px] text-xs text-[#20231F] focus:outline-none focus:border-[#26362E]"
+                    onChange={(e) => setUnitCost(e.target.value === '' ? '' : Number(e.target.value))}
+                    className="w-full px-3 py-2.5 bg-[#FFFFFF] border border-[#E5E5DF] rounded-[8px] text-xs text-[#20231F] focus:outline-none focus:border-[#26362E]"
                   />
                 </div>
               </div>

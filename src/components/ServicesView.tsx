@@ -52,8 +52,8 @@ export const ServicesView: React.FC<ServicesViewProps> = ({
 
   // Service Form State
   const [serviceName, setServiceName] = useState('');
-  const [sellingPrice, setSellingPrice] = useState<number>(50000);
-  const [durationMins, setDurationMins] = useState<number>(18);
+  const [sellingPrice, setSellingPrice] = useState<number | ''>(50000);
+  const [durationMins, setDurationMins] = useState<number | ''>(18);
   const [description, setDescription] = useState('');
   const [selectedHPPItems, setSelectedHPPItems] = useState<
     { hpp_id: string; quantity_used: number }[]
@@ -71,7 +71,7 @@ export const ServicesView: React.FC<ServicesViewProps> = ({
 
   // HPP Form State
   const [hppItemName, setHppItemName] = useState('');
-  const [hppUnitCost, setHppUnitCost] = useState<number>(1500);
+  const [hppUnitCost, setHppUnitCost] = useState<number | ''>(1500);
   const [hppUnitType, setHppUnitType] = useState('pcs');
   const [hppCategory, setHppCategory] = useState('Bahan Baku & Steril');
   const [hppIsActive, setHppIsActive] = useState<boolean>(true);
@@ -860,7 +860,7 @@ export const ServicesView: React.FC<ServicesViewProps> = ({
                     min="0"
                     step="100"
                     value={hppUnitCost}
-                    onChange={(e) => setHppUnitCost(Number(e.target.value) || 0)}
+                    onChange={(e) => setHppUnitCost(e.target.value === '' ? '' : Number(e.target.value))}
                     className="w-full px-3 py-2.5 bg-[#FFFFFF] border border-[#E5E5DF] rounded-[8px] text-xs font-bold text-[#20231F] focus:outline-none focus:border-[#26362E]"
                   />
                   <p className="text-[10px] text-[#686D66] mt-1">
@@ -1045,7 +1045,7 @@ export const ServicesView: React.FC<ServicesViewProps> = ({
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div>
+                <div className="flex-1">
                   <label className="block text-xs font-medium text-[#20231F] mb-1">
                     Harga Jual (Rp) <span className="text-[#A84B45]">*</span>
                   </label>
@@ -1053,23 +1053,21 @@ export const ServicesView: React.FC<ServicesViewProps> = ({
                     type="number"
                     required
                     min="0"
-                    step="1000"
                     value={sellingPrice}
-                    onChange={(e) => setSellingPrice(Number(e.target.value) || 0)}
+                    onChange={(e) => setSellingPrice(e.target.value === '' ? '' : Number(e.target.value))}
                     className="w-full px-3 py-2.5 bg-[#FFFFFF] border border-[#E5E5DF] rounded-[8px] text-xs text-[#20231F] focus:outline-none focus:border-[#26362E]"
                   />
                 </div>
-                <div>
+                <div className="flex-1">
                   <label className="block text-xs font-medium text-[#20231F] mb-1">
                     Durasi (Menit) <span className="text-[#A84B45]">*</span>
                   </label>
                   <input
                     type="number"
                     required
-                    min="5"
-                    step="1"
+                    min="1"
                     value={durationMins}
-                    onChange={(e) => setDurationMins(Number(e.target.value) || 18)}
+                    onChange={(e) => setDurationMins(e.target.value === '' ? '' : Number(e.target.value))}
                     className="w-full px-3 py-2.5 bg-[#FFFFFF] border border-[#E5E5DF] rounded-[8px] text-xs text-[#20231F] focus:outline-none focus:border-[#26362E]"
                   />
                 </div>
