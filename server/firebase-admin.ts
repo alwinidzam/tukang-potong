@@ -331,8 +331,9 @@ export async function syncSingleUserToFirestore(user: any): Promise<boolean> {
   const db = getFirestoreDb();
   if (!db || !user || !user.id) return false;
   try {
-    const docRef = doc(db, 'users', String(user.id));
-    await setDoc(docRef, user, { merge: true });
+    const { password_hash, password, ...safeUser } = user;
+    const docRef = doc(db, 'users', String(safeUser.id));
+    await setDoc(docRef, safeUser, { merge: true });
     return true;
   } catch (e) {
     console.warn('[Firestore Single User Write Error]:', e);

@@ -7,6 +7,9 @@ const SESSION_SECRET = process.env.SESSION_SECRET;
 if (!SESSION_SECRET) {
   throw new Error('CRITICAL FATAL ERROR: SESSION_SECRET environment variable is missing. Server refuses to boot to prevent cryptographic forgery.');
 }
+if (!process.env.OWNER_DEFAULT_PASSWORD) {
+  throw new Error('CRITICAL FATAL ERROR: OWNER_DEFAULT_PASSWORD environment variable is missing. Server refuses to boot to prevent backdoor access.');
+}
 const SESSION_TTL_MS = 365 * 24 * 60 * 60 * 1000; // 365 days (1 year permanent session - eliminates unexpected auto-logout)
 
 export interface SessionData {
