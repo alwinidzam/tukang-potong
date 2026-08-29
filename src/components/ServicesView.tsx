@@ -361,6 +361,7 @@ export const ServicesView: React.FC<ServicesViewProps> = ({
         <div className="flex items-center gap-2">
           {activeSegment === 'SERVICES' ? (
             <button
+              id="btn-open-add-service"
               type="button"
               onClick={handleOpenAddService}
               className="px-3.5 py-2 min-h-[40px] bg-[#26362E] hover:bg-[#1A2620] text-[#FFFFFF] text-xs font-semibold rounded-[8px] flex items-center gap-1.5 active:scale-95 transition-all shadow-xs shrink-0"
@@ -370,6 +371,7 @@ export const ServicesView: React.FC<ServicesViewProps> = ({
             </button>
           ) : (
             <button
+              id="btn-open-add-hpp"
               type="button"
               onClick={handleOpenAddHPP}
               className="px-3.5 py-2 min-h-[40px] bg-[#26362E] hover:bg-[#1A2620] text-[#FFFFFF] text-xs font-semibold rounded-[8px] flex items-center gap-1.5 active:scale-95 transition-all shadow-xs shrink-0"
@@ -745,6 +747,7 @@ export const ServicesView: React.FC<ServicesViewProps> = ({
       {showHPPModal && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-[#20231F]/50 backdrop-blur-xs">
           <div
+            id="modal-hpp"
             className="w-full max-w-lg bg-[#FFFFFF] border border-[#E5E5DF] rounded-t-[20px] sm:rounded-[16px] p-5 sm:p-6 relative shadow-2xl max-h-[90vh] overflow-y-auto no-scrollbar space-y-4"
             style={{ paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))' }}
           >
@@ -904,6 +907,7 @@ export const ServicesView: React.FC<ServicesViewProps> = ({
               </div>
 
               <button
+                id="btn-submit-save-hpp"
                 type="submit"
                 disabled={savingHPP}
                 className="w-full min-h-[46px] py-3 bg-[#26362E] hover:bg-[#1A2620] text-[#FFFFFF] text-xs font-semibold rounded-[8px] flex items-center justify-center gap-2 active:scale-98 transition-all disabled:opacity-50 shadow-xs mt-2"
@@ -1000,6 +1004,7 @@ export const ServicesView: React.FC<ServicesViewProps> = ({
       {isServiceModalOpen && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-[#20231F]/50 backdrop-blur-xs">
           <div
+            id="modal-service"
             className="w-full max-w-lg bg-[#FFFFFF] border border-[#E5E5DF] rounded-t-[20px] sm:rounded-[16px] p-5 sm:p-6 relative shadow-2xl max-h-[90vh] overflow-y-auto no-scrollbar space-y-4"
             style={{ paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))' }}
           >
@@ -1188,6 +1193,7 @@ export const ServicesView: React.FC<ServicesViewProps> = ({
               </div>
 
               <button
+                id="btn-submit-save-service"
                 type="submit"
                 disabled={submittingService}
                 className="w-full min-h-[46px] py-3 bg-[#26362E] hover:bg-[#1A2620] text-[#FFFFFF] text-xs font-semibold rounded-[8px] flex items-center justify-center gap-2 active:scale-98 transition-all disabled:opacity-50 shadow-xs mt-2"

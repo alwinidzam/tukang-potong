@@ -1,11 +1,10 @@
-const CACHE_NAME = "arez-barbershop-v5";
+const CACHE_NAME = "arez-barbershop-v6";
 const ASSETS_TO_CACHE = [
   "/",
   "/index.html",
   "/manifest.json",
   "/manifest.webmanifest",
-  "/LOGOICONBARU.svg",
-  "/LOGOICONBARU.png",
+  "/logo.svg",
   "/icon-192.png",
   "/icon-512.png",
   "/apple-touch-icon.png",

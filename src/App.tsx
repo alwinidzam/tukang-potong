@@ -129,33 +129,46 @@ export default function App() {
     }
   };
 
-  // Fetch all data
+  // Fetch all data safely according to user role permissions
   const loadAllData = useCallback(async () => {
     try {
-      const [qData, sData, hData, tData, aData] = await Promise.all([
-        api.getQueues(),
-        api.getServices(),
-        api.getHPP(),
-        api.getTransactions(),
-        api.getAnalyticsRecap(),
+      // 1. Public Data (Queues & Services available to everyone)
+      const [qData, sData] = await Promise.all([
+        api.getQueues().catch(() => []),
+        api.getServices().catch(() => []),
       ]);
+      setQueues(Array.isArray(qData) ? qData : []);
+      setServices(Array.isArray(sData) ? sData : []);
 
-      setQueues(qData);
-      setServices(sData);
-      setHppList(hData);
-      setTransactions(tData);
-      setAnalytics(aData);
-      setDailyRecap(aData.daily);
+      // 2. Staff / Owner Restricted Data
+      if (isOwner || isStaff) {
+        const [hData, tData] = await Promise.all([
+          api.getHPP().catch(() => []),
+          api.getTransactions().catch(() => []),
+        ]);
+        setHppList(Array.isArray(hData) ? hData : []);
+        setTransactions(Array.isArray(tData) ? tData : []);
+      }
 
+      // 3. Owner Only Analytics
+      if (isOwner) {
+        const aData = await api.getAnalyticsRecap().catch(() => null);
+        if (aData) {
+          setAnalytics(aData);
+          setDailyRecap(aData.daily || null);
+        }
+      }
+
+      // 4. Customer Notifications
       if (currentUser && currentUser.role === 'CUSTOMER') {
-        const notifs = await api.getNotifications(currentUser.id);
-        const unread = notifs.filter((n) => !n.read).length;
+        const notifs = await api.getNotifications(currentUser.id).catch(() => []);
+        const unread = Array.isArray(notifs) ? notifs.filter((n) => !n.read).length : 0;
         setUnreadNotifsCount(unread);
       }
     } catch (err) {
       console.error('Data load failed:', err);
     }
-  }, [currentUser]);
+  }, [currentUser, isOwner, isStaff]);
 
   useEffect(() => {
     loadAllData();

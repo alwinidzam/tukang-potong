@@ -117,6 +117,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLoginSu
         {/* Segment Tabs */}
         <div className="flex items-center gap-1 p-1 bg-[#F1F1EC] rounded-[8px] border border-[#E5E5DF]">
           <button
+            id="tab-auth-owner"
             type="button"
             onClick={() => setActiveTab('owner')}
             className={`flex-1 py-2 text-xs font-medium rounded-[6px] transition-all ${
@@ -128,6 +129,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLoginSu
             Owner / Staf Barber
           </button>
           <button
+            id="tab-auth-customer"
             type="button"
             onClick={() => setActiveTab('customer')}
             className={`flex-1 py-2 text-xs font-medium rounded-[6px] transition-all ${
@@ -155,6 +157,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLoginSu
                 Username / ID Akses
               </label>
               <input
+                id="input-owner-username"
                 type="text"
                 required
                 value={username}
@@ -169,6 +172,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLoginSu
                 Kata Sandi
               </label>
               <input
+                id="input-owner-password"
                 type="password"
                 required
                 value={password}
@@ -205,6 +209,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLoginSu
                 Nama Lengkap <span className="text-[#A84B45]">*</span>
               </label>
               <input
+                id="input-customer-name"
                 type="text"
                 required
                 value={customerName}
@@ -219,6 +224,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLoginSu
                 Alamat Email <span className="text-[#A84B45]">*</span>
               </label>
               <input
+                id="input-customer-email"
                 type="email"
                 required
                 value={customerEmail}
@@ -233,6 +239,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLoginSu
                 Nomor WhatsApp <span className="text-[10px] text-[#686D66] font-normal">(Disarankan untuk notifikasi)</span>
               </label>
               <input
+                id="input-customer-phone"
                 type="tel"
                 value={customerPhone}
                 onChange={(e) => setCustomerPhone(e.target.value)}

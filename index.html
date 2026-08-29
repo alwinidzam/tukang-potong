@@ -57,8 +57,8 @@
     <script type="module" src="/src/main.tsx"></script>
 
     <script>
-      // 1. Service Worker Registration & Auto Update
-      if ("serviceWorker" in navigator) {
+      // 1. Service Worker Registration & Auto Update (Production Only)
+      if ("serviceWorker" in navigator && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
         window.addEventListener("load", () => {
           navigator.serviceWorker
             .register("/sw.js")
