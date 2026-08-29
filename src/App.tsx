@@ -19,8 +19,7 @@ import { AnalyticsView } from './components/AnalyticsView';
 import { CRMBehaviorView } from './components/CRMBehaviorView';
 import { PWAInstallBanner } from './components/PWAInstallBanner';
 import { playQueueCallSound } from './lib/audio';
-import { collection, onSnapshot, query, where, orderBy, limit } from 'firebase/firestore';
-import { db as firestoreDb } from './lib/firebase';
+import { supabase } from './lib/supabase';
 
 export default function App() {
   // Authentication & Role State (Server session is authoritative)
@@ -174,85 +173,57 @@ export default function App() {
     loadAllData();
   }, [loadAllData]);
 
-  // Real-Time Multi-Layered Synchronization (Firestore onSnapshot + Reconnecting SSE + Visibility Triggers + Fast Polling)
+  // Real-Time Multi-Layered Synchronization (Supabase Realtime + Reconnecting SSE + Visibility Triggers)
   useEffect(() => {
-    let unsubscribeQueues: (() => void) | null = null;
-    let unsubscribeNotifs: (() => void) | null = null;
-    let unsubscribeHPP: (() => void) | null = null;
-    let unsubscribeServices: (() => void) | null = null;
-    let unsubscribeTransactions: (() => void) | null = null;
     let eventSource: EventSource | null = null;
     let sseRetryTimer: any = null;
-
-    // 1. Direct Cloud Firestore Real-Time WebSocket Engine (<100ms sync)
+    let supabaseChannel: any = null;
     try {
-      if (firestoreDb) {
-        // OPTIMIZATION: Listen to 50 latest queues so active queues are never dropped across midnight or timezone boundaries
-        const queuesQuery = query(collection(firestoreDb, 'queues'), orderBy('created_at', 'desc'), limit(50));
-        unsubscribeQueues = onSnapshot(
-          queuesQuery,
-          (snapshot) => {
-            snapshot.docChanges().forEach((change) => {
-              const data = change.doc.data();
-              if (change.type === 'modified' && data.status === 'IN_PROGRESS') {
+      if (supabase) {
+        supabaseChannel = supabase
+          .channel('arez-live-sync')
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'queues' },
+            (payload) => {
+              if (payload.eventType === 'UPDATE' && (payload.new as any)?.status === 'IN_PROGRESS') {
                 playQueueCallSound();
               }
-            });
-            const freshQueues = snapshot.docs.map(d => d.data() as any);
-            freshQueues.sort((a, b) => (Number(a.queue_number) || 0) - (Number(b.queue_number) || 0));
-            setQueues(freshQueues);
-          },
-          (error) => {
-            console.warn('[Firestore Real-Time Queue Note]:', error);
-          }
-        );
-
-        // OPTIMIZATION: Only listen to current user's unread notifications
-        if (currentUser) {
-           const notifQuery = query(
-             collection(firestoreDb, 'notifications'), 
-             where('user_id', '==', currentUser.id),
-             where('read', '==', false)
-           );
-           unsubscribeNotifs = onSnapshot(
-             notifQuery,
-             (snapshot) => {
-               setUnreadNotifsCount(snapshot.docs.length);
-             },
-             () => {}
-           );
-        }
-
-        unsubscribeHPP = onSnapshot(
-          collection(firestoreDb, 'master_hpp'),
-          (snapshot) => {
-            setHppList(snapshot.docs.map(d => d.data() as any));
-          },
-          () => {}
-        );
-
-        unsubscribeServices = onSnapshot(
-          collection(firestoreDb, 'services'),
-          (snapshot) => {
-            setServices(snapshot.docs.map(d => d.data() as any));
-          },
-          () => {}
-        );
-
-        // OPTIMIZATION: Only listen to the 50 most recent transactions to prevent unbounded DB reads
-        const trxQuery = query(collection(firestoreDb, 'transactions'), orderBy('created_at', 'desc'), limit(50));
-        unsubscribeTransactions = onSnapshot(
-          trxQuery,
-          (snapshot) => {
-            setTransactions(snapshot.docs.map(d => d.data() as any));
-          },
-          () => {}
-        );
-
-        // Removed users onSnapshot entirely to save quota. Staff tab fetches via API.
+              api.getQueues().then((freshQueues) => {
+                freshQueues.sort((a, b) => (Number(a.queue_number) || 0) - (Number(b.queue_number) || 0));
+                setQueues(freshQueues);
+              }).catch(() => {});
+            }
+          )
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'services' },
+            () => {
+              api.getServices().then(setServices).catch(() => {});
+            }
+          )
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'hpp_items' },
+            () => {
+              if (isOwner || isStaff) {
+                api.getHPP().then(setHppList).catch(() => {});
+              }
+            }
+          )
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'transactions' },
+            () => {
+              if (isOwner || isStaff) {
+                api.getTransactions().then(setTransactions).catch(() => {});
+              }
+            }
+          )
+          .subscribe();
       }
     } catch (e) {
-      console.warn('[Firestore Setup Note]:', e);
+      console.warn('[Supabase Realtime Setup Note]:', e);
     }
 
     // 2. Reconnecting Server-Sent Events (SSE) Listener with Exponential Backoff
@@ -313,18 +284,15 @@ export default function App() {
     document.addEventListener('visibilitychange', handleWakeLockVisibility);
 
     return () => {
-      unsubscribeQueues?.();
-      unsubscribeNotifs?.();
-      unsubscribeHPP?.();
-      unsubscribeServices?.();
-      unsubscribeTransactions?.();
+      if (supabase && supabaseChannel) {
+        supabase.removeChannel(supabaseChannel);
+      }
       eventSource?.close();
       clearTimeout(sseRetryTimer);
       window.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleVisibilityChange);
       document.removeEventListener('visibilitychange', handleWakeLockVisibility);
       wakeLockSentinel?.release().catch(() => {});
-      // clearInterval(interval);
     };
   }, [loadAllData]);
 

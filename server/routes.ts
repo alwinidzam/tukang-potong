@@ -14,18 +14,15 @@ import {
   isStaffRole,
 } from './auth.js';
 import {
-  syncSingleQueueToFirestore,
-  deleteSingleQueueFromFirestore,
-  loadQueuesFromFirestore,
-  syncSingleHPPToFirestore,
-  deleteSingleHPPFromFirestore,
-  syncSingleServiceToFirestore,
-  deleteSingleServiceFromFirestore,
-  syncSingleUserToFirestore,
-  deleteSingleUserFromFirestore,
-  syncSingleTransactionToFirestore,
-  syncSingleNotificationToFirestore,
-} from './firebase-admin.js';
+  syncQueueToSupabase,
+  deleteQueueFromSupabase,
+  syncHPPToSupabase,
+  deleteHPPFromSupabase,
+  syncServiceToSupabase,
+  deleteServiceFromSupabase,
+  syncUserToSupabase,
+  syncTransactionToSupabase,
+} from './supabase.js';
 
 const router = Router();
 
@@ -282,7 +279,7 @@ router.post('/auth/owner-login', async (req: Request, res: Response) => {
           candidateUser.password_hash = hashPassword(password);
         }
         db.saveData();
-        await syncSingleUserToFirestore(candidateUser);
+        await syncUserToSupabase(candidateUser);
 
         const session = createSession(candidateUser.id, candidateUser.role);
 
@@ -354,7 +351,7 @@ router.post('/auth/google-sso', async (req: Request, res: Response) => {
   }
 
   await db.saveDataAsync();
-  await syncSingleUserToFirestore(user);
+  await syncUserToSupabase(user);
 
   // Create authenticated session
   const session = createSession(user.id, user.role);
@@ -481,8 +478,7 @@ router.post('/users/staff', requireRole('OWNER'), async (req: AuthenticatedReque
   data.notifications.unshift(staffNotif);
 
   await db.saveDataAsync();
-  await syncSingleUserToFirestore(newStaff);
-  await syncSingleNotificationToFirestore(staffNotif);
+  await syncUserToSupabase(newStaff);
 
   broadcastSSE('STAFF_UPDATED', { action: 'CREATED', staff: sanitizeUser(newStaff) });
 
@@ -558,7 +554,7 @@ router.patch('/users/staff/:id', requireRole('OWNER'), async (req: Authenticated
 
   user.updated_at = new Date().toISOString();
   await db.saveDataAsync();
-  await syncSingleUserToFirestore(user);
+  await syncUserToSupabase(user);
 
   broadcastSSE('STAFF_UPDATED', { action: 'UPDATED', staff: sanitizeUser(user) });
 
@@ -593,7 +589,7 @@ router.patch('/users/staff/:id/status', requireRole('OWNER'), async (req: Authen
   user.status = status;
   user.updated_at = new Date().toISOString();
   await db.saveDataAsync();
-  await syncSingleUserToFirestore(user);
+  await syncUserToSupabase(user);
 
   // If deactivating, invalidate active sessions
   if (status === 'INACTIVE') {
@@ -633,7 +629,7 @@ router.post('/users/staff/:id/reset-password', requireRole('OWNER'), async (req:
   user.password_hash = hashPassword(password);
   user.updated_at = new Date().toISOString();
   await db.saveDataAsync();
-  await syncSingleUserToFirestore(user);
+  await syncUserToSupabase(user);
 
   // Invalidate previous sessions so user re-authenticates with new password
   destroyUserSessions(id);
@@ -663,7 +659,7 @@ router.delete('/users/staff/:id', requireRole('OWNER'), async (req: Authenticate
   targetUser.deleted_at = new Date().toISOString();
   targetUser.updated_at = new Date().toISOString();
   await db.saveDataAsync();
-  await syncSingleUserToFirestore(targetUser);
+  await syncUserToSupabase(targetUser);
 
   // Invalidate any active session for this staff member
   destroyUserSessions(id);
@@ -682,17 +678,6 @@ router.delete('/users/staff/:id', requireRole('OWNER'), async (req: Authenticate
 
 router.get('/queues', async (req: Request, res: Response) => {
   const data = db.getData();
-
-  try {
-    const cloudQueues = await loadQueuesFromFirestore();
-    if (cloudQueues && cloudQueues.length > 0) {
-      const map = new Map<string, QueueItem>();
-      (data.queues || []).forEach(q => map.set(q.id, q));
-      cloudQueues.forEach(q => map.set(q.id, q));
-      data.queues = Array.from(map.values());
-    }
-  } catch (_) {}
-
   const dateStr = (req.query.date as string) || getJakartaDateStr();
 
   const queues = (data.queues || [])
@@ -783,11 +768,10 @@ router.post('/queues', async (req: AuthenticatedRequest, res: Response) => {
       read: false,
     };
     data.notifications.push(notif);
-    await syncSingleNotificationToFirestore(notif);
   }
 
   db.saveData();
-  await syncSingleQueueToFirestore(newQueue);
+  await syncQueueToSupabase(newQueue);
   broadcastSSE('QUEUE_ADDED', newQueue);
 
   res.status(201).json({ success: true, queue: newQueue });
@@ -814,7 +798,7 @@ router.post('/queues/:id/start', requireRole('OWNER', 'STAFF'), async (req: Auth
   queue.end_time = null;
 
   db.saveData();
-  await syncSingleQueueToFirestore(queue);
+  await syncQueueToSupabase(queue);
   broadcastSSE('QUEUE_STARTED', queue);
 
   res.json({ success: true, queue });
@@ -892,11 +876,11 @@ router.post('/queues/:id/complete', requireRole('OWNER', 'STAFF'), async (req: A
   data.transactions.unshift(newTx);
 
   db.saveData();
-  await syncSingleQueueToFirestore(queue);
+  await syncQueueToSupabase(queue);
   if (customer) {
-    await syncSingleUserToFirestore(customer);
+    await syncUserToSupabase(customer);
   }
-  await syncSingleTransactionToFirestore(newTx);
+  await syncTransactionToSupabase(newTx);
   
   broadcastSSE('QUEUE_COMPLETED', { queue, transaction: newTx });
 
@@ -921,7 +905,7 @@ router.post('/queues/:id/skip', requireRole('OWNER', 'STAFF'), async (req: Authe
     .sort((a, b) => a.queue_number - b.queue_number)[0];
 
   db.saveData();
-  await syncSingleQueueToFirestore(queue);
+  await syncQueueToSupabase(queue);
   broadcastSSE('QUEUE_SKIPPED', { skippedQueue: queue, nextWaiting });
 
   res.json({ success: true, skippedQueue: queue, nextWaiting });
@@ -946,7 +930,7 @@ router.delete('/queues/:id', requireAuth, async (req: AuthenticatedRequest, res:
 
   data.queues.splice(idx, 1);
   db.saveData();
-  await deleteSingleQueueFromFirestore(id);
+  await deleteQueueFromSupabase(id);
   broadcastSSE('QUEUE_DELETED', { id });
 
   res.json({ success: true });
@@ -1033,7 +1017,7 @@ router.post('/hpp', requireRole('OWNER'), async (req: AuthenticatedRequest, res:
 
   data.master_hpp.push(newItem);
   await db.saveDataAsync();
-  await syncSingleHPPToFirestore(newItem);
+  await syncHPPToSupabase(newItem);
   broadcastSSE('HPP_UPDATED', { action: 'CREATED', item: newItem });
 
   res.status(201).json({
@@ -1087,7 +1071,7 @@ const handleUpdateHPP = async (req: AuthenticatedRequest, res: Response) => {
 
   item.updated_at = new Date().toISOString();
   await db.saveDataAsync();
-  await syncSingleHPPToFirestore(item);
+  await syncHPPToSupabase(item);
 
   const usedCount = (data.service_hpp_relations || []).filter(r => r.hpp_id === id).length;
   const enrichedItem = {
@@ -1125,7 +1109,7 @@ router.patch('/hpp/:id/status', requireRole('OWNER'), async (req: AuthenticatedR
   item.is_active = Boolean(is_active);
   item.updated_at = new Date().toISOString();
   await db.saveDataAsync();
-  await syncSingleHPPToFirestore(item);
+  await syncHPPToSupabase(item);
 
   const usedCount = (data.service_hpp_relations || []).filter(r => r.hpp_id === id).length;
   const enrichedItem = {
@@ -1177,7 +1161,7 @@ router.delete('/hpp/:id', requireRole('OWNER'), async (req: AuthenticatedRequest
     data.master_hpp.splice(idx, 1);
 
     await db.saveDataAsync();
-    await deleteSingleHPPFromFirestore(id);
+    await deleteHPPFromSupabase(id);
     broadcastSSE('HPP_UPDATED', { action: 'DELETED', deletedId: id });
 
     return res.json({
@@ -1268,7 +1252,7 @@ router.post('/services', requireRole('OWNER'), async (req: AuthenticatedRequest,
   }
 
   await db.saveDataAsync();
-  await syncSingleServiceToFirestore(newService, relationsForThisService);
+  await syncServiceToSupabase(newService);
   broadcastSSE('SERVICES_UPDATED', { action: 'CREATED', service: newService });
 
   res.status(201).json({ success: true, service: newService });
@@ -1313,7 +1297,7 @@ router.put('/services/:id', requireRole('OWNER'), async (req: AuthenticatedReque
   }
 
   await db.saveDataAsync();
-  await syncSingleServiceToFirestore(service, relationsForThisService);
+  await syncServiceToSupabase(service);
   broadcastSSE('SERVICES_UPDATED', { action: 'UPDATED', service });
 
   res.json({ success: true, service });
@@ -1332,7 +1316,7 @@ router.delete('/services/:id', requireRole('OWNER'), async (req: AuthenticatedRe
   data.service_hpp_relations = data.service_hpp_relations.filter(r => r.service_id !== id);
 
   await db.saveDataAsync();
-  await deleteSingleServiceFromFirestore(id);
+  await deleteServiceFromSupabase(id);
   broadcastSSE('SERVICES_UPDATED', { action: 'DELETED', id });
 
   res.json({ success: true, message: 'Layanan berhasil dihapus' });
@@ -1394,7 +1378,7 @@ router.post('/transactions/direct-checkout', requireRole('OWNER', 'STAFF'), asyn
 
   data.transactions.unshift(newTx);
   await db.saveDataAsync();
-  await syncSingleTransactionToFirestore(newTx);
+  await syncTransactionToSupabase(newTx);
   broadcastSSE('TRANSACTION_CREATED', newTx);
 
   res.status(201).json({ success: true, transaction: newTx });
@@ -1536,7 +1520,6 @@ router.post('/crm/send-retention-push', requireRole('OWNER'), async (req: Authen
 
   data.notifications.unshift(notif);
   await db.saveDataAsync();
-  await syncSingleNotificationToFirestore(notif);
   broadcastSSE('NOTIFICATION_SENT', { user: sanitizeUser(user), notification: notif });
 
   res.json({ success: true, notification: notif });

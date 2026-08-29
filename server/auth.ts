@@ -1,7 +1,6 @@
 import crypto from 'crypto';
 import { Request, Response, NextFunction } from 'express';
 import { db, User, UserRole } from './db.js';
-import { syncSingleRevokedTokensToFirestore } from './firebase-admin.js';
 
 const SESSION_SECRET = process.env.SESSION_SECRET || 'arez_session_v2_auto_fallback_x89f_2026';
 const OWNER_DEFAULT_PASSWORD = process.env.OWNER_DEFAULT_PASSWORD || 'Arez008';
@@ -225,13 +224,37 @@ export function getSession(sessionId: string): SessionData | null {
 /**
  * Revoke/destroy an active session
  */
-export function destroySession(sessionId: string): void {
+export function revokeAllUserTokens(userId: string): void {
   const data = db.getData();
-  if (!data.revoked_tokens) data.revoked_tokens = [];
-  data.revoked_tokens.push(sessionId);
+  if (!data.revoked_tokens) {
+    data.revoked_tokens = [];
+  }
+  data.revoked_tokens.push(userId);
   db.saveData();
-  syncSingleRevokedTokensToFirestore(data.revoked_tokens);
-  sessions.delete(sessionId);
+
+  // Invalidate any local memory sessions
+  for (const [sId, sess] of sessions.entries()) {
+    if (sess.userId === userId) {
+      sessions.delete(sId);
+    }
+  }
+}
+
+export function revokeToken(tokenId: string): void {
+  const data = db.getData();
+  if (!data.revoked_tokens) {
+    data.revoked_tokens = [];
+  }
+  data.revoked_tokens.push(tokenId);
+  db.saveData();
+
+  if (sessions.has(tokenId)) {
+    sessions.delete(tokenId);
+  }
+}
+
+export function destroySession(sessionId: string): void {
+  revokeToken(sessionId);
 }
 
 /**
@@ -252,7 +275,6 @@ export function destroyUserSessions(userId: string): void {
   
   if (changed) {
     db.saveData();
-    syncSingleRevokedTokensToFirestore(data.revoked_tokens);
   }
 }
 

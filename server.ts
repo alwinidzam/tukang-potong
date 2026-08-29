@@ -11,9 +11,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 async function startServer() {
-  // Initialize Cloud Firestore Sync
-  db.initFirestoreSync().catch(err => {
-    console.warn('[Firestore Boot Warn]:', err);
+  // Initialize Cloud Database Sync
+  db.initCloudSync().catch(err => {
+    console.warn('[Cloud Boot Warn]:', err);
   });
 
   const app = express();

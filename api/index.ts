@@ -10,9 +10,9 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser(process.env.SESSION_SECRET));
 
-// Initialize Cloud Firestore Sync
-db.initFirestoreSync().catch(err => {
-  console.warn('[Firestore Boot Warn]:', err);
+// Initialize Cloud Database Sync
+db.initCloudSync().catch(err => {
+  console.warn('[Cloud Boot Warn]:', err);
 });
 
 // API Router

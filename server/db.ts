@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import os from 'os';
-import { syncToFirestore, loadFromFirestore } from './firebase-admin.js';
+import { getAtomicQueueNumber } from './supabase.js';
 
 export type UserRole = 'OWNER' | 'STAFF' | 'CUSTOMER';
 export type UserStatus = 'ACTIVE' | 'INACTIVE';
@@ -65,6 +65,10 @@ export interface QueueItem {
   walk_in_name: string | null;
   customer_phone?: string | null;
   service_id: string;
+  service_name?: string;
+  service_price?: number;
+  service_duration?: number;
+  customer_name?: string;
   source: 'ONLINE' | 'WALK_IN';
   status: 'WAITING' | 'IN_PROGRESS' | 'COMPLETED' | 'SKIPPED';
   start_time: string | null; // ISO timestamp
@@ -418,56 +422,11 @@ class Database {
     return initial;
   }
 
-  public async initFirestoreSync() {
-    try {
-      const cloudData = await loadFromFirestore();
-      if (cloudData && cloudData.users && cloudData.users.length > 0) {
-        // Pass this.data.users to preserve password_hash when syncing from cloud
-        const sanitizedCloud = sanitizeProductionData(cloudData, this.data.users);
-        this.data = sanitizedCloud;
-        this.saveData(this.data);
-        // Force cleanup of old dummy docs and normalize roles in Firestore
-        await syncToFirestore(this.data);
-      } else {
-        console.log('[Firestore] Seeding clean production data to Firestore Cloud Database...');
-        await syncToFirestore(this.data);
-      }
-    } catch (e) {
-      console.warn('[Firestore] Background cloud sync note:', e);
-    }
+  public async initCloudSync() {
+    // Cloud sync initialized via Supabase
   }
 
-  private lastCloudSync = 0;
-  private syncPromise: Promise<void> | null = null;
-
-  public async ensureFreshData(): Promise<DatabaseSchema> {
-    const now = Date.now();
-    // Cache in-memory for 2.5 seconds per process instance to prevent excessive network roundtrips
-    if (now - this.lastCloudSync < 2500 && this.data && this.data.services && this.data.services.length > 0) {
-      return this.data;
-    }
-
-    if (this.syncPromise) {
-      await this.syncPromise;
-      return this.data;
-    }
-
-    this.syncPromise = (async () => {
-      try {
-        const cloudData = await loadFromFirestore();
-        if (cloudData && cloudData.users && cloudData.users.length > 0) {
-          const sanitizedCloud = sanitizeProductionData(cloudData, this.data.users);
-          this.data = sanitizedCloud;
-          this.lastCloudSync = Date.now();
-        }
-      } catch (e) {
-        console.warn('[Firestore ensureFreshData Note]:', e);
-      } finally {
-        this.syncPromise = null;
-      }
-    })();
-
-    await this.syncPromise;
+  public getData(): DatabaseSchema {
     return this.data;
   }
 
@@ -486,9 +445,6 @@ class Database {
 
       fs.writeFileSync(tempFile, jsonContent, 'utf-8');
       fs.renameSync(tempFile, DB_FILE);
-
-      // Removed: syncToFirestore background call to prevent Vercel 504 timeouts.
-      // API routes MUST call explicit syncSingle...ToFirestore functions for real-time sync.
       return true;
     } catch (e) {
       console.error('[Atomic DB Write Failed]:', e);
@@ -504,12 +460,7 @@ class Database {
   }
 
   public async saveDataAsync(customData?: DatabaseSchema): Promise<boolean> {
-    // Alias to saveData. Replaces massive blocking batch-syncs with instantaneous local saves.
     return this.saveData(customData);
-  }
-
-  public getData(): DatabaseSchema {
-    return this.data;
   }
 
   // Calculate HPP for a given service dynamically
@@ -538,7 +489,6 @@ class Database {
   public async getSafeQueueNumber(dateStr: string): Promise<number> {
     const localMax = this.getNextQueueNumber(dateStr);
     try {
-      const { getAtomicQueueNumber } = await import('./firebase-admin.js');
       return await getAtomicQueueNumber(dateStr, localMax);
     } catch (_) {
       return localMax;

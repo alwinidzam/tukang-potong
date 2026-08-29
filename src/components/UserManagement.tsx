@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, StaffCreatePayload, StaffUpdatePayload } from '../types';
 import { api } from '../lib/api';
-import { onSnapshot, collection } from 'firebase/firestore';
-import { db as firestoreDb } from '../lib/firebase';
+import { supabase } from '../lib/supabase';
 import {
   Users,
   UserPlus,
@@ -85,21 +84,26 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
   useEffect(() => {
     fetchStaffData();
 
-    let unsubscribeUsers: (() => void) | null = null;
+    let channel: any = null;
     try {
-      if (firestoreDb) {
-        unsubscribeUsers = onSnapshot(
-          collection(firestoreDb, 'users'),
-          () => {
-            fetchStaffData();
-          },
-          () => {}
-        );
+      if (supabase) {
+        channel = supabase
+          .channel('staff-sync')
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'users' },
+            () => {
+              fetchStaffData();
+            }
+          )
+          .subscribe();
       }
     } catch (_) {}
 
     return () => {
-      unsubscribeUsers?.();
+      if (supabase && channel) {
+        supabase.removeChannel(channel);
+      }
     };
   }, []);
 
