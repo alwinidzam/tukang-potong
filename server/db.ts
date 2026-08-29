@@ -136,50 +136,6 @@ const getInitialSeedData = (): DatabaseSchema => {
   const todayStr = getJakartaDateStr(now);
   const ownerPassword = process.env.OWNER_DEFAULT_PASSWORD || 'Arez008';
 
-  const master_hpp: MasterHPP[] = [
-    { id: 'hpp-1', item_name: 'Pisau Cukur Silet Platinum (Sekali Pakai)', unit_cost: 1500, unit_type: 'pcs', category: 'Bahan Baku & Steril', is_active: true, updated_at: now.toISOString() },
-    { id: 'hpp-2', item_name: 'Pomade Waterbased / Matte Clay Premium', unit_cost: 3000, unit_type: '10g', category: 'Styling & Perawatan', is_active: true, updated_at: now.toISOString() },
-    { id: 'hpp-3', item_name: 'Shaving Cream & Foam Anti-Iritasi', unit_cost: 1200, unit_type: 'porsi', category: 'Bahan Baku & Steril', is_active: true, updated_at: now.toISOString() },
-    { id: 'hpp-4', item_name: 'Neck Paper & Tissue Leher Steril', unit_cost: 600, unit_type: 'pcs', category: 'Bahan Baku & Steril', is_active: true, updated_at: now.toISOString() },
-    { id: 'hpp-5', item_name: 'Tonic & Hair Serum Nutrisi', unit_cost: 2000, unit_type: 'ml', category: 'Styling & Perawatan', is_active: true, updated_at: now.toISOString() },
-    { id: 'hpp-6', item_name: 'Listrik, AC & Clipper Sterilizer (Proporsional)', unit_cost: 2500, unit_type: 'sesi', category: 'Operasional & Utilitas', is_active: true, updated_at: now.toISOString() },
-    { id: 'hpp-7', item_name: 'Handuk Hangat & Essential Oil Wash', unit_cost: 1800, unit_type: 'sesi', category: 'Bahan Baku & Steril', is_active: true, updated_at: now.toISOString() },
-  ];
-
-  const services: Service[] = [
-    { id: 'srv-1', service_name: 'Signature Haircut (Standard)', selling_price: 50000, duration_mins: 18, is_active: true, description: 'Potong presisi, cuci rambut, styling pomade & hot towel finish' },
-    { id: 'srv-2', service_name: 'Gentlemen Executive Cut + Wash + Tonic', selling_price: 75000, duration_mins: 18, is_active: true, description: 'Haircut eksklusif, hair wash, scalp massage, hair tonic & styling' },
-    { id: 'srv-3', service_name: 'Beard Trim & Precision Shave', selling_price: 40000, duration_mins: 18, is_active: true, description: 'Rapikan jenggot, kumis, shaving dengan foam hangat & razor tajam' },
-    { id: 'srv-4', service_name: 'The Ultimate Grooming (Cut + Shave + Facial Wash)', selling_price: 110000, duration_mins: 18, is_active: true, description: 'Paket lengkap perawatan pria premium' },
-  ];
-
-  const service_hpp_relations: ServiceHPPRelation[] = [
-    { service_id: 'srv-1', hpp_id: 'hpp-1', quantity_used: 1 },
-    { service_id: 'srv-1', hpp_id: 'hpp-2', quantity_used: 1 },
-    { service_id: 'srv-1', hpp_id: 'hpp-4', quantity_used: 1 },
-    { service_id: 'srv-1', hpp_id: 'hpp-6', quantity_used: 1 },
-
-    { service_id: 'srv-2', hpp_id: 'hpp-1', quantity_used: 1 },
-    { service_id: 'srv-2', hpp_id: 'hpp-2', quantity_used: 1 },
-    { service_id: 'srv-2', hpp_id: 'hpp-4', quantity_used: 1 },
-    { service_id: 'srv-2', hpp_id: 'hpp-5', quantity_used: 1 },
-    { service_id: 'srv-2', hpp_id: 'hpp-6', quantity_used: 1 },
-    { service_id: 'srv-2', hpp_id: 'hpp-7', quantity_used: 1 },
-
-    { service_id: 'srv-3', hpp_id: 'hpp-1', quantity_used: 1 },
-    { service_id: 'srv-3', hpp_id: 'hpp-3', quantity_used: 1 },
-    { service_id: 'srv-3', hpp_id: 'hpp-4', quantity_used: 1 },
-    { service_id: 'srv-3', hpp_id: 'hpp-6', quantity_used: 1 },
-
-    { service_id: 'srv-4', hpp_id: 'hpp-1', quantity_used: 1 },
-    { service_id: 'srv-4', hpp_id: 'hpp-2', quantity_used: 1 },
-    { service_id: 'srv-4', hpp_id: 'hpp-3', quantity_used: 1 },
-    { service_id: 'srv-4', hpp_id: 'hpp-4', quantity_used: 1 },
-    { service_id: 'srv-4', hpp_id: 'hpp-5', quantity_used: 1 },
-    { service_id: 'srv-4', hpp_id: 'hpp-6', quantity_used: 1 },
-    { service_id: 'srv-4', hpp_id: 'hpp-7', quantity_used: 1 },
-  ];
-
   const users: User[] = [
     {
       id: 'usr-admin',
@@ -198,18 +154,14 @@ const getInitialSeedData = (): DatabaseSchema => {
     },
   ];
 
-  const queues: QueueItem[] = [];
-  const transactions: Transaction[] = [];
-  const notifications: NotificationLog[] = [];
-
   return {
     users,
-    master_hpp,
-    services,
-    service_hpp_relations,
-    queues,
-    transactions,
-    notifications,
+    master_hpp: [],
+    services: [],
+    service_hpp_relations: [],
+    queues: [],
+    transactions: [],
+    notifications: [],
     revoked_tokens: [],
   };
 };
