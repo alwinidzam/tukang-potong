@@ -13,37 +13,31 @@ async function runCustomerTests() {
   page.on('pageerror', err => console.error(`[Browser Error]: ${err.message}`));
 
   try {
-    console.log('1. Navigating to http://localhost:3000 ...');
+    console.log('1. Navigating to http://localhost:3000 (Login Landing Page Gatekeeper)...');
     await page.goto('http://localhost:3000', { waitUntil: 'domcontentloaded' });
-    await page.waitForSelector('#main-app-header', { timeout: 10000 });
-    console.log('PASS: Header loaded.');
+    await page.waitForSelector('#landing-auth-card', { timeout: 10000 });
+    console.log('PASS: Login Landing Page gatekeeper loaded.');
 
-    console.log('2. Opening Auth Modal via #btn-header-login-trigger ...');
-    const loginTrigger = page.locator('#btn-header-login-trigger');
-    await loginTrigger.click();
-    await page.waitForSelector('#auth-modal', { timeout: 5000 });
-    console.log('PASS: Auth Modal opened.');
-
-    console.log('3. Switching to Pelanggan tab...');
-    await page.locator('#tab-auth-customer').click();
-    await page.waitForSelector('#input-customer-name', { timeout: 5000 });
+    console.log('2. Switching to Pelanggan tab on Landing Page...');
+    await page.locator('#tab-customer-login').click();
+    await page.waitForSelector('#input-landing-customer-name', { timeout: 5000 });
     console.log('PASS: Switched to Pelanggan tab.');
 
     const testPhone = `0812${Math.floor(10000000 + Math.random() * 90000000)}`;
     const testName = `Tamu Tester ${Math.floor(Math.random() * 1000)}`;
     const testEmail = `tamu${Date.now()}@areztest.com`;
 
-    console.log(`4. Filling customer form: ${testName} / ${testEmail} / ${testPhone}`);
-    await page.locator('#input-customer-name').fill(testName);
-    await page.locator('#input-customer-email').fill(testEmail);
-    await page.locator('#input-customer-phone').fill(testPhone);
+    console.log(`3. Filling customer form: ${testName} / ${testEmail} / ${testPhone}`);
+    await page.locator('#input-landing-customer-name').fill(testName);
+    await page.locator('#input-landing-customer-phone').fill(testPhone);
+    await page.locator('#input-landing-customer-email').fill(testEmail);
 
-    console.log('5. Clicking #btn-submit-customer-login ...');
+    console.log('4. Clicking #btn-submit-customer-login ...');
     await page.locator('#btn-submit-customer-login').click();
 
-    // Wait for auth modal to close
-    await page.waitForSelector('#auth-modal', { state: 'detached', timeout: 5000 });
-    console.log('PASS: Auth Modal closed, customer logged in.');
+    // Wait for Landing Page to transition to Main App Header
+    await page.waitForSelector('#main-app-header', { timeout: 10000 });
+    console.log('PASS: Customer logged in and main app loaded.');
 
     await page.waitForSelector('text=Selamat datang', { timeout: 5000 });
     const greeting = await page.locator('text=Selamat datang').innerText();
@@ -106,7 +100,7 @@ async function runCustomerTests() {
     await page.waitForSelector('#btn-profile-sheet-logout', { timeout: 5000 });
     await page.locator('#btn-profile-sheet-logout').click();
     await page.waitForTimeout(1000);
-    await page.waitForSelector('#btn-header-login-trigger', { timeout: 5000 });
+    await page.waitForSelector('#landing-auth-card', { timeout: 5000 });
     console.log('PASS: Logged out successfully.');
 
     console.log('=== TEST SUITE 1 (CUSTOMER EXPERIENCE) PASSED 100% ===');

@@ -13,19 +13,17 @@ async function runStaffAndCRMTests() {
   page.on('pageerror', err => console.error(`[Browser Error]: ${err.message}`));
 
   try {
-    console.log('1. Navigating & Logging in as Owner...');
+    console.log('1. Navigating & Logging in as Owner via Login Landing Page...');
     await page.goto('http://localhost:3000', { waitUntil: 'domcontentloaded' });
-    await page.waitForSelector('#main-app-header', { timeout: 10000 });
+    await page.waitForSelector('#landing-auth-card', { timeout: 10000 });
 
-    const loginTrigger = page.locator('#btn-header-login-trigger, #btn-login-to-queue').first();
-    await loginTrigger.click();
-    await page.waitForSelector('#auth-modal', { timeout: 5000 });
+    await page.locator('#tab-owner-login').click();
+    await page.waitForSelector('#input-landing-owner-username', { timeout: 5000 });
 
-    await page.locator('#tab-auth-owner').click();
-    await page.locator('#input-owner-username').fill('CEO POTONG');
-    await page.locator('#input-owner-password').fill('Arez008');
+    await page.locator('#input-landing-owner-username').fill('CEO POTONG');
+    await page.locator('#input-landing-owner-password').fill('Arez008');
     await page.locator('#btn-submit-owner-login').click();
-    await page.waitForSelector('#auth-modal', { state: 'detached', timeout: 5000 });
+    await page.waitForSelector('text=Ringkasan Hari Ini', { timeout: 10000 });
     console.log('PASS: Logged in as Owner.');
 
     // Navigate to "Tim Staf" tab
@@ -92,7 +90,7 @@ async function runStaffAndCRMTests() {
     await page.waitForSelector('#btn-profile-sheet-logout', { timeout: 5000 });
     await page.locator('#btn-profile-sheet-logout').click();
     await page.waitForTimeout(1000);
-    await page.waitForSelector('#btn-header-login-trigger', { timeout: 5000 });
+    await page.waitForSelector('#landing-auth-card', { timeout: 5000 });
     console.log('PASS: Owner logged out.');
 
     console.log('=== TEST SUITE 4 (STAFF & CRM) PASSED 100% ===');

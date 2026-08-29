@@ -9,8 +9,8 @@
       "phone": "081288990011",
       "role": "OWNER",
       "status": "ACTIVE",
-      "last_login_at": "2026-08-29T02:17:22.275Z",
-      "password_hash": "pbkdf2_sha256$100000$d30b938b04e785d9626180d38fe88a54$2440ea55b7eac145d30b75ef8451265556805b13cb552821a5b46da99bf3856bac02fbfdf8bf6dc3903472ed19d009ff6efa2e1fe0ed78ae3892dd14d9e7375b",
+      "last_login_at": "2026-08-29T02:41:01.849Z",
+      "password_hash": "pbkdf2_sha256$100000$55548880cade464d91933286b9bcd9e2$90b0098f96213d1bd23e0e3deb35869f6878bc8c1df9fc998471a81453845fda9539ce4d17853955032be81da9968554d3c852deceee89b4e3d856da77e260ff",
       "username": "CEO POTONG",
       "total_visits": 0,
       "last_visit_at": null
@@ -221,12 +221,12 @@
     },
     {
       "full_name": "Attacker Customer A",
-      "total_visits": 2,
+      "total_visits": 3,
       "role": "CUSTOMER",
       "email": "attacker@test.com",
       "id": "usr-cust-A",
       "status": "ACTIVE",
-      "last_visit_at": "2026-08-29T02:16:54.676Z",
+      "last_visit_at": "2026-08-29T02:33:22.472Z",
       "created_at": "2026-08-27T14:54:46.803Z",
       "favorite_service": "Signature Haircut (Standard)"
     },
@@ -371,6 +371,89 @@
       "created_at": "2026-08-29T02:17:14.183Z",
       "updated_at": "2026-08-29T02:17:14.183Z",
       "last_login_at": null
+    },
+    {
+      "id": "usr-cust-1787970789004",
+      "role": "CUSTOMER",
+      "status": "ACTIVE",
+      "google_id": "g-1787970788288",
+      "full_name": "Tamu Tester 580",
+      "email": "tamu1787970788021@areztest.com",
+      "phone": "081299949210",
+      "avatar_url": "https://api.dicebear.com/7.x/initials/svg?seed=Tamu%20Tester%20580",
+      "total_visits": 1,
+      "last_visit_at": "2026-08-29T02:33:09.004Z",
+      "favorite_day": "Sabtu",
+      "favorite_hour": "15:00 - 18:00",
+      "favorite_service": "Signature Haircut (Standard)",
+      "created_at": "2026-08-29T02:33:09.004Z",
+      "updated_at": "2026-08-29T02:33:09.004Z"
+    },
+    {
+      "id": "usr-staff-1787970821200",
+      "role": "STAFF",
+      "status": "ACTIVE",
+      "username": "dimas_876",
+      "password_hash": "pbkdf2_sha256$100000$a4f113b8902ef1a6c9b4b9757c36537e$4f382ff02aefddeb2955248ef13df22f31a62ebf4d344b548733801de73dc9f12bbb0a81484dddaec0c2f292553437109ba00a486808a593fd44db7ca0d98030",
+      "full_name": "Barber Dimas 876",
+      "email": "dimas_876@arezbarbershop.com",
+      "phone": "081225919637",
+      "avatar_url": "https://api.dicebear.com/7.x/bottts/svg?seed=dimas_876",
+      "total_visits": 0,
+      "last_visit_at": null,
+      "created_at": "2026-08-29T02:33:41.200Z",
+      "updated_at": "2026-08-29T02:33:41.200Z",
+      "last_login_at": null
+    },
+    {
+      "id": "usr-cust-1787971164980",
+      "role": "CUSTOMER",
+      "status": "ACTIVE",
+      "google_id": "guest-1787971164973",
+      "full_name": "Tamu Tester 492",
+      "email": "tamu1787971164751@areztest.com",
+      "phone": "081226555711",
+      "avatar_url": "https://api.dicebear.com/7.x/initials/svg?seed=Tamu%20Tester%20492",
+      "total_visits": 1,
+      "last_visit_at": "2026-08-29T02:39:24.980Z",
+      "favorite_day": "Sabtu",
+      "favorite_hour": "15:00 - 18:00",
+      "favorite_service": "Signature Haircut (Standard)",
+      "created_at": "2026-08-29T02:39:24.980Z",
+      "updated_at": "2026-08-29T02:39:24.980Z"
+    },
+    {
+      "id": "usr-cust-1787971225446",
+      "role": "CUSTOMER",
+      "status": "ACTIVE",
+      "google_id": "guest-1787971225446",
+      "full_name": "Tamu Tester 687",
+      "email": "tamu1787971225283@areztest.com",
+      "phone": "081236751602",
+      "avatar_url": "https://api.dicebear.com/7.x/initials/svg?seed=Tamu%20Tester%20687",
+      "total_visits": 1,
+      "last_visit_at": "2026-08-29T02:40:25.446Z",
+      "favorite_day": "Sabtu",
+      "favorite_hour": "15:00 - 18:00",
+      "favorite_service": "Signature Haircut (Standard)",
+      "created_at": "2026-08-29T02:40:25.446Z",
+      "updated_at": "2026-08-29T02:40:25.446Z"
+    },
+    {
+      "id": "usr-staff-1787971253998",
+      "role": "STAFF",
+      "status": "ACTIVE",
+      "username": "dimas_263",
+      "password_hash": "pbkdf2_sha256$100000$1b24818ea53b79136a6fd1b76e905650$b6f5c78c3a4a6ebb764be294e29d5c8063b28f09177ea3966806efae8eb9c8c61baad21a003fb43aec45d580a6e9e5be1839d7d7616ec23ff8e4d5b6a7c92e44",
+      "full_name": "Barber Dimas 263",
+      "email": "dimas_263@arezbarbershop.com",
+      "phone": "081235005930",
+      "avatar_url": "https://api.dicebear.com/7.x/bottts/svg?seed=dimas_263",
+      "total_visits": 0,
+      "last_visit_at": null,
+      "created_at": "2026-08-29T02:40:53.997Z",
+      "updated_at": "2026-08-29T02:40:53.997Z",
+      "last_login_at": null
     }
   ],
   "master_hpp": [
@@ -513,6 +596,28 @@
       "description": "Pisau cukur tajam steril sekali pakai",
       "created_at": "2026-08-29T02:17:03.076Z",
       "updated_at": "2026-08-29T02:17:03.076Z"
+    },
+    {
+      "id": "hpp-1787970812003-346",
+      "item_name": "Silet Platinum Tester 659",
+      "unit_cost": 3500,
+      "unit_type": "pcs",
+      "category": "Bahan Baku & Steril",
+      "is_active": true,
+      "description": "Pisau cukur tajam steril sekali pakai",
+      "created_at": "2026-08-29T02:33:32.003Z",
+      "updated_at": "2026-08-29T02:33:32.003Z"
+    },
+    {
+      "id": "hpp-1787971245639-345",
+      "item_name": "Silet Platinum Tester 832",
+      "unit_cost": 3500,
+      "unit_type": "pcs",
+      "category": "Bahan Baku & Steril",
+      "is_active": true,
+      "description": "Pisau cukur tajam steril sekali pakai",
+      "created_at": "2026-08-29T02:40:45.639Z",
+      "updated_at": "2026-08-29T02:40:45.639Z"
     }
   ],
   "services": [
@@ -591,6 +696,22 @@
     {
       "id": "srv-1787969824689",
       "service_name": "Executive Royal Grooming 116",
+      "selling_price": 85000,
+      "duration_mins": 25,
+      "is_active": true,
+      "description": "Layanan potong rambut eksekutif lengkap dengan cuci rambut dan hair tonic"
+    },
+    {
+      "id": "srv-1787970813713",
+      "service_name": "Executive Royal Grooming 265",
+      "selling_price": 85000,
+      "duration_mins": 25,
+      "is_active": true,
+      "description": "Layanan potong rambut eksekutif lengkap dengan cuci rambut dan hair tonic"
+    },
+    {
+      "id": "srv-1787971247278",
+      "service_name": "Executive Royal Grooming 618",
       "selling_price": 85000,
       "duration_mins": 25,
       "is_active": true,
@@ -788,12 +909,12 @@
       "service_id": "srv-test",
       "id": "q-1787842487901-849",
       "queue_date": "2026-08-27",
-      "status": "WAITING",
+      "status": "COMPLETED",
       "customer_phone": null,
       "walk_in_name": null,
       "created_at": "2026-08-27T14:54:47.901Z",
-      "end_time": null,
-      "start_time": null
+      "end_time": "2026-08-29T02:33:22.471Z",
+      "start_time": "2026-08-29T02:33:20.715Z"
     },
     {
       "service_id": "srv-1",
@@ -858,12 +979,12 @@
     {
       "queue_number": 3,
       "notes": "Model Undercut rapih",
-      "start_time": null,
+      "start_time": "2026-08-29T02:40:35.775Z",
       "created_at": "2026-08-29T01:43:46.439Z",
-      "status": "WAITING",
+      "status": "COMPLETED",
       "service_price": 50000,
       "service_duration": 18,
-      "end_time": null,
+      "end_time": "2026-08-29T02:40:37.368Z",
       "queue_date": "2026-08-29",
       "customer_phone": "081322932634",
       "customer_id": null,
@@ -930,9 +1051,73 @@
       "end_time": null,
       "created_at": "2026-08-29T02:16:52.695Z",
       "notes": "Model Undercut rapih"
+    },
+    {
+      "id": "q-1787970799954-602",
+      "queue_date": "2026-08-29",
+      "queue_number": 8,
+      "customer_id": null,
+      "walk_in_name": "WalkIn Tester 397",
+      "customer_phone": "081338475049",
+      "service_id": "srv-1",
+      "service_name": "Signature Haircut (Standard)",
+      "service_price": 50000,
+      "service_duration": 18,
+      "customer_name": "WalkIn Tester 397",
+      "source": "WALK_IN",
+      "status": "WAITING",
+      "start_time": null,
+      "end_time": null,
+      "created_at": "2026-08-29T02:33:19.954Z",
+      "notes": "Model Undercut rapih"
+    },
+    {
+      "id": "q-1787971235043-19",
+      "queue_date": "2026-08-29",
+      "queue_number": 9,
+      "customer_id": null,
+      "walk_in_name": "WalkIn Tester 137",
+      "customer_phone": "081392517581",
+      "service_id": "srv-1",
+      "service_name": "Signature Haircut (Standard)",
+      "service_price": 50000,
+      "service_duration": 18,
+      "customer_name": "WalkIn Tester 137",
+      "source": "WALK_IN",
+      "status": "WAITING",
+      "start_time": null,
+      "end_time": null,
+      "created_at": "2026-08-29T02:40:35.043Z",
+      "notes": "Model Undercut rapih"
     }
   ],
   "transactions": [
+    {
+      "id": "trx-1787971237368",
+      "queue_id": "q-1787967826438-102",
+      "customer_name": "WalkIn Tester 878 (Walk-In)",
+      "service_name": "Signature Haircut (Standard)",
+      "total_price": 46000,
+      "discount": 5000,
+      "tax": 1000,
+      "total_hpp": 7600,
+      "net_profit": 38400,
+      "payment_method": "CASH",
+      "created_at": "2026-08-29T02:40:37.368Z"
+    },
+    {
+      "id": "trx-1787970802472",
+      "queue_id": "q-1787842487901-849",
+      "customer_name": "Attacker Customer A (Online)",
+      "service_name": "Signature Haircut",
+      "total_price": 46000,
+      "discount": 5000,
+      "tax": 1000,
+      "total_hpp": 7600,
+      "net_profit": 38400,
+      "payment_method": "CASH",
+      "created_at": "2026-08-29T02:33:22.472Z"
+    },
     {
       "id": "trx-1787969814676",
       "queue_id": "q-1787842284007-462",
@@ -974,6 +1159,24 @@
     }
   ],
   "notifications": [
+    {
+      "id": "notif-staff-1787971254074",
+      "user_id": "usr-admin",
+      "title": "Akun Staff Dibuat",
+      "message": "Owner membuat akun staff baru: Barber Dimas 263 (@dimas_263) dengan status ACTIVE.",
+      "type": "SYSTEM",
+      "read": false,
+      "created_at": "2026-08-29T02:40:53.997Z"
+    },
+    {
+      "id": "notif-staff-1787970821275",
+      "user_id": "usr-admin",
+      "title": "Akun Staff Dibuat",
+      "message": "Owner membuat akun staff baru: Barber Dimas 876 (@dimas_876) dengan status ACTIVE.",
+      "type": "SYSTEM",
+      "read": false,
+      "created_at": "2026-08-29T02:33:41.200Z"
+    },
     {
       "id": "notif-staff-1787969834263",
       "user_id": "usr-admin",
@@ -1108,6 +1311,33 @@
       "type": "REMINDER_15M",
       "created_at": "2026-08-29T02:16:45.117Z",
       "read": false
+    },
+    {
+      "id": "notif-1787970791343",
+      "user_id": "usr-cust-1787970789004",
+      "title": "Nomor Antrean Anda: #8",
+      "message": "Harap tiba di lokasi 15 menit sebelum visual progres antrean penuh. Layanan: Signature Haircut (Standard)",
+      "type": "REMINDER_15M",
+      "created_at": "2026-08-29T02:33:11.343Z",
+      "read": false
+    },
+    {
+      "id": "notif-1787971166963",
+      "user_id": "usr-cust-1787971164980",
+      "title": "Nomor Antrean Anda: #9",
+      "message": "Harap tiba di lokasi 15 menit sebelum visual progres antrean penuh. Layanan: Signature Haircut (Standard)",
+      "type": "REMINDER_15M",
+      "created_at": "2026-08-29T02:39:26.963Z",
+      "read": false
+    },
+    {
+      "id": "notif-1787971226633",
+      "user_id": "usr-cust-1787971225446",
+      "title": "Nomor Antrean Anda: #9",
+      "message": "Harap tiba di lokasi 15 menit sebelum visual progres antrean penuh. Layanan: Signature Haircut (Standard)",
+      "type": "REMINDER_15M",
+      "created_at": "2026-08-29T02:40:26.633Z",
+      "read": false
     }
   ],
   "revoked_tokens": [
@@ -1125,6 +1355,17 @@
     "arez_v2.usr-admin.OWNER.1819505811605.09cdc0029b561f50269f144cd5a887f9b11245730d5590df0ca1154170fe1cb9",
     "arez_v2.usr-admin.OWNER.1819505821253.77838c8bc229ba9a74caaa20916e3188d6806fe5f44759284dc2c9623aacc13a",
     "arez_v2.usr-admin.OWNER.1819505833265.10d75c5480b2f9ada9f035bc98843414813826c2309f9b3121306472575c7694",
-    "arez_v2.usr-admin.OWNER.1819505842278.777b15c2c44c02b2a4144b459283a08541e00e2d3842b5d846d7d6a629e99a8e"
+    "arez_v2.usr-admin.OWNER.1819505842278.777b15c2c44c02b2a4144b459283a08541e00e2d3842b5d846d7d6a629e99a8e",
+    "arez_v2.usr-cust-1787970789004.CUSTOMER.1819506789828.feb69fb49a1cd2894b5d95feec5820076e9537cca9ad51cc67bd810e099e122b",
+    "arez_v2.usr-admin.OWNER.1819506798892.4c66f24a3fe80cf86a1a668dd173d3f3020a25276993dcfd2d1784b2fde080cc",
+    "arez_v2.usr-admin.OWNER.1819506810107.674e5ec8f060fedc798ab6fd2d9503a07993a3fa515f1a776cfbe0ff8b138851",
+    "arez_v2.usr-admin.OWNER.1819506820024.380b1b24f022f24889bc0f394686e0d19b8578073d0ac715084e4d3b01e38bfc",
+    "arez_v2.usr-admin.OWNER.1819506829760.83fb2370e3401b4da1add4b0183cdce64930aba3234a977aa005b4aba5141cc2",
+    "arez_v2.usr-cust-1787971164980.CUSTOMER.1819507165870.0a2909e1e68e88c7c2d84b15832922788901ce79948142bfd35cafe4bf2dad1d",
+    "arez_v2.usr-cust-1787971225446.CUSTOMER.1819507225823.27f52698ef31ba193b870f58860cedaa001970144e09a46836be2d668b0bb070",
+    "arez_v2.usr-admin.OWNER.1819507233612.1a30e94c37a33fa4aa34135494f0004300940ef847c89ad53a8576f3d14af3cd",
+    "arez_v2.usr-admin.OWNER.1819507243806.e763592337d72195d1dde7d5940b8335ffd2e78d6539fcfc861be2a484f8d7a6",
+    "arez_v2.usr-admin.OWNER.1819507253093.bb7a6be58355b8ed6c4005d9af92b8afb2a61230142e3c2adb1588b4f860e65a",
+    "arez_v2.usr-admin.OWNER.1819507262143.d512d1363a0ea5b8f310435215e09e28384a0a91206d86be7cb3e2d84b851123"
   ]
 }

@@ -17,6 +17,7 @@ import { HPPManagement } from './components/HPPManagement';
 import { ServicesView } from './components/ServicesView';
 import { AnalyticsView } from './components/AnalyticsView';
 import { CRMBehaviorView } from './components/CRMBehaviorView';
+import { LoginLandingPage } from './components/LoginLandingPage';
 import { PWAInstallBanner } from './components/PWAInstallBanner';
 import { playQueueCallSound } from './lib/audio';
 import { supabase } from './lib/supabase';
@@ -320,6 +321,11 @@ export default function App() {
     setCurrentUser(null);
     setActiveTab('queue');
   };
+
+  // Gatekeeper: Unauthenticated users are strictly served the Login Landing Page
+  if (!currentUser) {
+    return <LoginLandingPage onLoginSuccess={handleLoginSuccess} />;
+  }
 
   return (
     <div

@@ -13,26 +13,20 @@ async function runOwnerPOSTests() {
   page.on('pageerror', err => console.error(`[Browser Error]: ${err.message}`));
 
   try {
-    console.log('1. Navigating to http://localhost:3000 ...');
+    console.log('1. Navigating & Logging in as Owner via Login Landing Page...');
     await page.goto('http://localhost:3000', { waitUntil: 'domcontentloaded' });
-    await page.waitForSelector('#main-app-header', { timeout: 10000 });
+    await page.waitForSelector('#landing-auth-card', { timeout: 10000 });
 
-    console.log('2. Opening Auth Modal & Logging in as Owner...');
-    const loginTrigger = page.locator('#btn-header-login-trigger, #btn-login-to-queue').first();
-    await loginTrigger.click();
-    await page.waitForSelector('#auth-modal', { timeout: 5000 });
+    console.log('2. Switching to Owner & Staf tab on Landing Page...');
+    await page.locator('#tab-owner-login').click();
+    await page.waitForSelector('#input-landing-owner-username', { timeout: 5000 });
 
-    // Click Owner Tab
-    await page.locator('#tab-auth-owner').click();
-    await page.waitForSelector('#input-owner-username', { timeout: 5000 });
-
-    // Fill Owner Credentials
-    await page.locator('#input-owner-username').fill('CEO POTONG');
-    await page.locator('#input-owner-password').fill('Arez008');
+    console.log('3. Filling Owner Credentials (CEO POTONG / Arez008)...');
+    await page.locator('#input-landing-owner-username').fill('CEO POTONG');
+    await page.locator('#input-landing-owner-password').fill('Arez008');
     await page.locator('#btn-submit-owner-login').click();
 
-    // Wait for Auth Modal to detach and Owner POS View to mount
-    await page.waitForSelector('#auth-modal', { state: 'detached', timeout: 5000 });
+    // Wait for Owner POS View to mount
     await page.waitForSelector('text=Ringkasan Hari Ini', { timeout: 10000 });
     console.log('PASS: Logged in as Owner, OwnerPOSView mounted.');
 
@@ -139,7 +133,7 @@ async function runOwnerPOSTests() {
     await page.waitForSelector('#btn-profile-sheet-logout', { timeout: 5000 });
     await page.locator('#btn-profile-sheet-logout').click();
     await page.waitForTimeout(1000);
-    await page.waitForSelector('#btn-header-login-trigger', { timeout: 5000 });
+    await page.waitForSelector('#landing-auth-card', { timeout: 5000 });
     console.log('PASS: Owner logged out successfully.');
 
     console.log('=== TEST SUITE 2 (OWNER POS & CHECKOUT) PASSED 100% ===');
