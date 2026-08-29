@@ -2,9 +2,9 @@ import { spawn } from 'child_process';
 import path from 'path';
 
 const testSuites = [
+  { name: 'Suite 3: Master HPP Inventory, Services & Recipe Margin', file: 'tests/03_master_hpp_and_services_flow.mjs' },
   { name: 'Suite 1: Customer Experience & Online Queue Lifecycle', file: 'tests/01_customer_flow.mjs' },
   { name: 'Suite 2: Owner POS, Real-time Queue & Cashier Checkout', file: 'tests/02_owner_pos_flow.mjs' },
-  { name: 'Suite 3: Master HPP Inventory, Services & Recipe Margin', file: 'tests/03_master_hpp_and_services_flow.mjs' },
   { name: 'Suite 4: Staff Management, RBAC & Customer CRM', file: 'tests/04_staff_and_crm_flow.mjs' },
   { name: 'Suite 5: Financial Analytics, KPI Periods & Reporting', file: 'tests/05_analytics_and_audit_flow.mjs' },
 ];

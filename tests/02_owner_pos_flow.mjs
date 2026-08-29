@@ -124,7 +124,7 @@ async function runOwnerPOSTests() {
     console.log('10. Verifying Completed tab...');
     await page.locator('button:has-text("Selesai")').first().click();
     await page.waitForTimeout(600);
-    const isCompletedListed = await page.locator(`text=${guestName}`).isVisible();
+    const isCompletedListed = await page.locator(`text=${guestName}`).first().isVisible();
     console.log(`PASS: Guest "${guestName}" listed in Selesai tab: ${isCompletedListed}`);
 
     // Test Profile Sheet and Logout

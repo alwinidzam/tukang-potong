@@ -10,12 +10,14 @@ import {
   Users,
 } from 'lucide-react';
 import { playSuccessSound } from '../lib/audio';
+import { useToast } from './Toast';
 
 interface CRMBehaviorViewProps {
   onRefreshData: () => void;
 }
 
 export const CRMBehaviorView: React.FC<CRMBehaviorViewProps> = ({ onRefreshData }) => {
+  const { showToast } = useToast();
   const [customers, setCustomers] = useState<CRMBehaviorCustomer[]>([]);
   const [loading, setLoading] = useState(true);
   const [sendingPush, setSendingPush] = useState<string | null>(null);
@@ -47,9 +49,10 @@ export const CRMBehaviorView: React.FC<CRMBehaviorViewProps> = ({ onRefreshData 
       playSuccessSound();
       setSentSuccessId(customerId);
       setTimeout(() => setSentSuccessId(null), 3000);
+      showToast(`Pesan retensi berhasil dikirim ke ${name}`, 'success');
       fetchCRMData();
     } catch (err: any) {
-      alert(err.message || 'Gagal mengirim notifikasi');
+      showToast(err.message || 'Gagal mengirim notifikasi', 'error');
     } finally {
       setSendingPush(null);
     }

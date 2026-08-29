@@ -13,6 +13,7 @@ import {
   Tooltip,
   CartesianGrid,
 } from 'recharts';
+import { useToast } from './Toast';
 
 interface AnalyticsViewProps {
   analytics: AnalyticsRecapResponse | null;
@@ -25,6 +26,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   transactions,
   onRefreshData,
 }) => {
+  const { showToast } = useToast();
   const [viewScope, setViewScope] = useState<'daily' | 'weekly' | 'monthly'>('daily');
 
   if (!analytics) {
@@ -53,7 +55,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
   const handleExportCSV = () => {
     if (transactions.length === 0) {
-      alert('Belum ada data transaksi untuk diekspor.');
+      showToast('Belum ada data transaksi untuk diekspor.', 'info');
       return;
     }
     const headers = [

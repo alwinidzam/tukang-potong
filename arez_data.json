@@ -5,15 +5,15 @@
       "role": "OWNER",
       "status": "ACTIVE",
       "username": "CEO POTONG",
-      "password_hash": "pbkdf2_sha256$100000$df85151df2775b96abbee84999c0a7e0$8819a775a3ff6f7345b1bb5d9d1e1d2d97401f4b5cd293f391969faaecaa3789afd2f5fe27256de7802bdef77a2b15a12f5577b5f91aca201b40ce4d91558172",
+      "password_hash": "pbkdf2_sha256$100000$10527778eb7f556316715a327bad33c5$b1f7c28e6fc6e121785d9e2e8351c8a90403543463507e9105c65039dae0c1ba7f76d12a1d6493d76b9a223409a5ff283da0d4b034f84543007f92bbfbcab9da",
       "full_name": "Aris (CEO Arez Barbershop)",
       "email": "owner@arezbarbershop.com",
       "phone": "081288990011",
       "total_visits": 0,
       "last_visit_at": null,
-      "created_at": "2026-08-29T02:47:05.604Z",
-      "updated_at": "2026-08-29T02:47:05.604Z",
-      "last_login_at": "2026-08-29T02:47:05.604Z"
+      "created_at": "2026-08-29T03:01:13.607Z",
+      "updated_at": "2026-08-29T03:01:13.607Z",
+      "last_login_at": "2026-08-29T03:01:13.607Z"
     }
   ],
   "master_hpp": [],

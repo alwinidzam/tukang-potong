@@ -18,6 +18,8 @@ import {
   SlidersHorizontal,
 } from 'lucide-react';
 import { playSuccessSound } from '../lib/audio';
+import { ConfirmModal, ConfirmDialogState } from './ConfirmModal';
+import { useToast } from './Toast';
 
 interface ServicesViewProps {
   services: Service[];
@@ -39,6 +41,14 @@ export const ServicesView: React.FC<ServicesViewProps> = ({
   hppList,
   onRefreshData,
 }) => {
+  const { showToast } = useToast();
+  const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
+
   // Main Navigation Tab: 'SERVICES' (Katalog Layanan) or 'HPP' (Komponen Biaya HPP)
   const [activeSegment, setActiveSegment] = useState<'SERVICES' | 'HPP'>('SERVICES');
 
@@ -217,16 +227,25 @@ export const ServicesView: React.FC<ServicesViewProps> = ({
     }
   };
 
-  const handleDeleteService = async (id: string, name: string) => {
-    if (confirm(`Apakah Anda yakin ingin menghapus layanan "${name}"?`)) {
-      try {
-        await api.deleteService(id);
-        playSuccessSound();
-        onRefreshData();
-      } catch (err: any) {
-        alert(err.message || 'Gagal menghapus layanan');
-      }
-    }
+  const handleDeleteService = (id: string, name: string) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Hapus Layanan',
+      message: `Apakah Anda yakin ingin menghapus layanan "${name}"? Tindakan ini akan menghapus layanan dari katalog dan kasir.`,
+      confirmText: 'Hapus Layanan',
+      cancelText: 'Batal',
+      variant: 'danger',
+      onConfirm: async () => {
+        try {
+          await api.deleteService(id);
+          playSuccessSound();
+          showToast(`Layanan "${name}" berhasil dihapus`, 'success');
+          onRefreshData();
+        } catch (err: any) {
+          showToast(err.message || 'Gagal menghapus layanan', 'error');
+        }
+      },
+    });
   };
 
   // -------------------------------------------------------------
@@ -263,9 +282,10 @@ export const ServicesView: React.FC<ServicesViewProps> = ({
     try {
       await api.toggleHPPStatus(item.id, newStatus);
       playSuccessSound();
+      showToast(`Status komponen "${item.item_name}" berhasil diubah`, 'success');
       onRefreshData();
     } catch (err: any) {
-      alert(err.message || 'Gagal mengubah status HPP');
+      showToast(err.message || 'Gagal mengubah status HPP', 'error');
     }
   };
 
@@ -301,6 +321,7 @@ export const ServicesView: React.FC<ServicesViewProps> = ({
       }
       playSuccessSound();
       setShowHPPModal(false);
+      showToast(editingHPP ? 'Komponen HPP diperbarui' : 'Komponen HPP berhasil dibuat', 'success');
       onRefreshData();
     } catch (err: any) {
       setHppFormError(err.message || 'Gagal menyimpan komponen HPP');
@@ -334,10 +355,11 @@ export const ServicesView: React.FC<ServicesViewProps> = ({
         return;
       }
       playSuccessSound();
+      showToast(`Komponen HPP "${deleteConfirmationHPP.item.item_name}" berhasil dihapus`, 'success');
       setDeleteConfirmationHPP(null);
       onRefreshData();
     } catch (err: any) {
-      alert(err.message || 'Gagal menghapus komponen HPP');
+      showToast(err.message || 'Gagal menghapus komponen HPP', 'error');
     } finally {
       setDeletingHPP(false);
     }
@@ -1208,6 +1230,12 @@ export const ServicesView: React.FC<ServicesViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Sleek Minimalist In-App Confirm Modal */}
+      <ConfirmModal
+        dialog={confirmDialog}
+        onClose={() => setConfirmDialog((prev) => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 };

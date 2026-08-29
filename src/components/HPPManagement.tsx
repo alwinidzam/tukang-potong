@@ -9,6 +9,8 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { playSuccessSound } from '../lib/audio';
+import { ConfirmModal, ConfirmDialogState } from './ConfirmModal';
+import { useToast } from './Toast';
 
 interface HPPManagementProps {
   hppList: MasterHPP[];
@@ -21,6 +23,14 @@ export const HPPManagement: React.FC<HPPManagementProps> = ({
   services,
   onRefreshData,
 }) => {
+  const { showToast } = useToast();
+  const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
+
   const [activeTab, setActiveTab] = useState<'SERVICES' | 'MASTER'>('SERVICES');
 
   // Master HPP CRUD state
@@ -76,23 +86,33 @@ export const HPPManagement: React.FC<HPPManagementProps> = ({
       }
       playSuccessSound();
       setShowAddHPPModal(false);
+      showToast(editingHPP ? 'Komponen HPP berhasil diperbarui' : 'Komponen HPP berhasil ditambahkan', 'success');
       onRefreshData();
     } catch (err: any) {
-      alert(err.message || 'Gagal menyimpan komponen HPP');
+      showToast(err.message || 'Gagal menyimpan komponen HPP', 'error');
     } finally {
       setSavingHPP(false);
     }
   };
 
-  const handleDeleteHPP = async (id: string, name: string) => {
-    if (confirm(`Hapus komponen biaya "${name}"?`)) {
-      try {
-        await api.deleteHPP(id);
-        onRefreshData();
-      } catch (err: any) {
-        alert(err.message || 'Gagal menghapus HPP');
-      }
-    }
+  const handleDeleteHPP = (id: string, name: string) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Hapus Komponen HPP',
+      message: `Apakah Anda yakin ingin menghapus komponen biaya "${name}"?`,
+      confirmText: 'Hapus Komponen',
+      cancelText: 'Batal',
+      variant: 'danger',
+      onConfirm: async () => {
+        try {
+          await api.deleteHPP(id);
+          showToast(`Komponen HPP "${name}" berhasil dihapus`, 'success');
+          onRefreshData();
+        } catch (err: any) {
+          showToast(err.message || 'Gagal menghapus HPP', 'error');
+        }
+      },
+    });
   };
 
   // Recipe Modal Handlers
@@ -130,9 +150,10 @@ export const HPPManagement: React.FC<HPPManagementProps> = ({
       });
       playSuccessSound();
       setSelectedServiceForRecipe(null);
+      showToast('Komposisi resep HPP berhasil disimpan', 'success');
       onRefreshData();
     } catch (err: any) {
-      alert(err.message || 'Gagal menyimpan komposisi HPP layanan');
+      showToast(err.message || 'Gagal menyimpan komposisi HPP layanan', 'error');
     } finally {
       setSavingRecipe(false);
     }
@@ -474,6 +495,12 @@ export const HPPManagement: React.FC<HPPManagementProps> = ({
           </div>
         </div>
       )}
+
+      {/* Sleek Minimalist In-App Confirm Modal */}
+      <ConfirmModal
+        dialog={confirmDialog}
+        onClose={() => setConfirmDialog((prev) => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 };

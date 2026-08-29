@@ -22,6 +22,8 @@ import {
   DollarSign,
 } from 'lucide-react';
 import { playSuccessSound } from '../lib/audio';
+import { ConfirmModal, ConfirmDialogState } from './ConfirmModal';
+import { useToast } from './Toast';
 
 interface OwnerPOSViewProps {
   queues: QueueItem[];
@@ -65,6 +67,14 @@ export const OwnerPOSView: React.FC<OwnerPOSViewProps> = ({
   const completedQueues = queues.filter((q) => q.status === 'COMPLETED');
   const skippedQueues = queues.filter((q) => q.status === 'SKIPPED');
 
+  const { showToast } = useToast();
+  const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
+
   // Calculate current checkout totals
   const currentServicePrice = activeCheckoutQueue
     ? Number(activeCheckoutQueue.service_price || 0)
@@ -77,12 +87,12 @@ export const OwnerPOSView: React.FC<OwnerPOSViewProps> = ({
   const handleWalkInSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!walkInName.trim()) {
-      alert('Nama pelanggan wajib diisi.');
+      showToast('Nama pelanggan wajib diisi.', 'error');
       return;
     }
     const targetServiceId = walkInServiceId || services[0]?.id;
     if (!targetServiceId) {
-      alert('Pilih salah satu layanan.');
+      showToast('Pilih salah satu layanan.', 'error');
       return;
     }
 
@@ -100,9 +110,10 @@ export const OwnerPOSView: React.FC<OwnerPOSViewProps> = ({
       setWalkInName('');
       setWalkInPhone('');
       setWalkInNotes('');
+      showToast(`Tamu walk-in "${walkInName.trim()}" berhasil ditambahkan ke antrean`, 'success');
       onRefreshData();
     } catch (err: any) {
-      alert(err.message || 'Gagal menambahkan tamu walk-in');
+      showToast(err.message || 'Gagal menambahkan tamu walk-in', 'error');
     } finally {
       setWalkInSubmitting(false);
     }
@@ -112,22 +123,32 @@ export const OwnerPOSView: React.FC<OwnerPOSViewProps> = ({
   const handleStartQueue = async (queueId: string) => {
     try {
       await api.startQueue(queueId);
+      showToast('Sesi pangkas dimulai', 'success');
       onRefreshData();
     } catch (err: any) {
-      alert(err.message || 'Gagal memulai sesi pangkas');
+      showToast(err.message || 'Gagal memulai sesi pangkas', 'error');
     }
   };
 
   // Skip Queue
-  const handleSkipQueue = async (queueId: string) => {
-    if (confirm('Lewati antrean tamu ini?')) {
-      try {
-        await api.skipQueue(queueId);
-        onRefreshData();
-      } catch (err: any) {
-        alert(err.message || 'Gagal melewati antrean');
-      }
-    }
+  const handleSkipQueue = (queueId: string) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Lewati Antrean',
+      message: 'Apakah Anda yakin ingin melewati antrean tamu ini?',
+      confirmText: 'Lewati Antrean',
+      cancelText: 'Batal',
+      variant: 'warning',
+      onConfirm: async () => {
+        try {
+          await api.skipQueue(queueId);
+          showToast('Antrean berhasil dilewati', 'info');
+          onRefreshData();
+        } catch (err: any) {
+          showToast(err.message || 'Gagal melewati antrean', 'error');
+        }
+      },
+    });
   };
 
   // Open Checkout Sheet
@@ -156,9 +177,10 @@ export const OwnerPOSView: React.FC<OwnerPOSViewProps> = ({
       setIsQuickCheckoutOpen(false);
       setLastCompletedTransaction(res.transaction);
       setIsReceiptModalOpen(true);
+      showToast('Transaksi pembayaran berhasil diselesaikan', 'success');
       onRefreshData();
     } catch (err: any) {
-      alert(err.message || 'Gagal memproses transaksi kasir');
+      showToast(err.message || 'Gagal memproses transaksi kasir', 'error');
     } finally {
       setCheckoutSubmitting(false);
     }
@@ -832,6 +854,12 @@ export const OwnerPOSView: React.FC<OwnerPOSViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Sleek Minimalist In-App Confirm Modal */}
+      <ConfirmModal
+        dialog={confirmDialog}
+        onClose={() => setConfirmDialog((prev) => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 };

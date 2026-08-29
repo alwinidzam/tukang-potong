@@ -19,6 +19,7 @@ import { AnalyticsView } from './components/AnalyticsView';
 import { CRMBehaviorView } from './components/CRMBehaviorView';
 import { LoginLandingPage } from './components/LoginLandingPage';
 import { PWAInstallBanner } from './components/PWAInstallBanner';
+import { ToastProvider } from './components/Toast';
 import { playQueueCallSound } from './lib/audio';
 import { supabase } from './lib/supabase';
 
@@ -324,132 +325,138 @@ export default function App() {
 
   // Gatekeeper: Unauthenticated users are strictly served the Login Landing Page
   if (!currentUser) {
-    return <LoginLandingPage onLoginSuccess={handleLoginSuccess} />;
+    return (
+      <ToastProvider>
+        <LoginLandingPage onLoginSuccess={handleLoginSuccess} />
+      </ToastProvider>
+    );
   }
 
   return (
-    <div
-      id="arez-barbershop-root"
-      className="min-h-screen min-h-[100dvh] bg-[#F7F6F2] text-[#20231F] flex flex-col font-sans selection:bg-[#E8ECE8] selection:text-[#26362E] w-full max-w-full overflow-x-hidden"
-    >
-      {/* PWA Install Banner */}
-      <PWAInstallBanner deferredPrompt={deferredPrompt} onInstall={handleInstallPWA} />
+    <ToastProvider>
+      <div
+        id="arez-barbershop-root"
+        className="min-h-screen min-h-[100dvh] bg-[#F7F6F2] text-[#20231F] flex flex-col font-sans selection:bg-[#E8ECE8] selection:text-[#26362E] w-full max-w-full overflow-x-hidden"
+      >
+        {/* PWA Install Banner */}
+        <PWAInstallBanner deferredPrompt={deferredPrompt} onInstall={handleInstallPWA} />
 
-      {/* Mobile-First Header */}
-      <Header
-        currentUser={currentUser}
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        onOpenAuth={() => setAuthModalOpen(true)}
-        onOpenProfile={() => setProfileSheetOpen(true)}
-      />
+        {/* Mobile-First Header */}
+        <Header
+          currentUser={currentUser}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          onOpenAuth={() => setAuthModalOpen(true)}
+          onOpenProfile={() => setProfileSheetOpen(true)}
+        />
 
-      {/* Main Content Container (with bottom nav safe area padding) */}
-      <main className="flex-1 w-full max-w-full px-0 pb-[calc(76px+env(safe-area-inset-bottom,0px))]">
-        {isOwner ? (
-          <>
-            {activeTab === 'pos' && (
-              <OwnerPOSView
-                queues={queues}
-                services={services}
-                dailyRecap={dailyRecap}
-                onRefreshData={loadAllData}
-              />
-            )}
-            {activeTab === 'staff' && (
-              <UserManagement currentUser={currentUser} />
-            )}
-            {(activeTab === 'services' || activeTab === 'hpp') && (
-              <ServicesView
-                services={services}
-                hppList={hppList}
-                onRefreshData={loadAllData}
-              />
-            )}
-            {activeTab === 'analytics' && (
-              <AnalyticsView
-                analytics={analytics}
-                transactions={transactions}
-                onRefreshData={loadAllData}
-              />
-            )}
-            {activeTab === 'crm' && (
-              <CRMBehaviorView onRefreshData={loadAllData} />
-            )}
-            {activeTab === 'queue' && (
-              <CustomerView
-                currentUser={currentUser}
-                queues={queues}
-                services={services}
-                activeSubTab="queue"
-                onOpenAuth={() => setAuthModalOpen(true)}
-                onRefreshData={loadAllData}
-              />
-            )}
-          </>
-        ) : isStaff ? (
-          <>
-            {activeTab === 'pos' && (
-              <OwnerPOSView
-                queues={queues}
-                services={services}
-                dailyRecap={dailyRecap}
-                onRefreshData={loadAllData}
-              />
-            )}
-            {activeTab === 'queue' && (
-              <CustomerView
-                currentUser={currentUser}
-                queues={queues}
-                services={services}
-                activeSubTab="queue"
-                onOpenAuth={() => setAuthModalOpen(true)}
-                onRefreshData={loadAllData}
-              />
-            )}
-          </>
-        ) : (
-          <CustomerView
-            currentUser={currentUser}
-            queues={queues}
-            services={services}
-            activeSubTab={activeTab as 'queue' | 'services_view' | 'history' | 'notifications'}
-            onOpenAuth={() => setAuthModalOpen(true)}
-            onRefreshData={loadAllData}
-          />
-        )}
-      </main>
+        {/* Main Content Container (with bottom nav safe area padding) */}
+        <main className="flex-1 w-full max-w-full px-0 pb-[calc(76px+env(safe-area-inset-bottom,0px))]">
+          {isOwner ? (
+            <>
+              {activeTab === 'pos' && (
+                <OwnerPOSView
+                  queues={queues}
+                  services={services}
+                  dailyRecap={dailyRecap}
+                  onRefreshData={loadAllData}
+                />
+              )}
+              {activeTab === 'staff' && (
+                <UserManagement currentUser={currentUser} />
+              )}
+              {(activeTab === 'services' || activeTab === 'hpp') && (
+                <ServicesView
+                  services={services}
+                  hppList={hppList}
+                  onRefreshData={loadAllData}
+                />
+              )}
+              {activeTab === 'analytics' && (
+                <AnalyticsView
+                  analytics={analytics}
+                  transactions={transactions}
+                  onRefreshData={loadAllData}
+                />
+              )}
+              {activeTab === 'crm' && (
+                <CRMBehaviorView onRefreshData={loadAllData} />
+              )}
+              {activeTab === 'queue' && (
+                <CustomerView
+                  currentUser={currentUser}
+                  queues={queues}
+                  services={services}
+                  activeSubTab="queue"
+                  onOpenAuth={() => setAuthModalOpen(true)}
+                  onRefreshData={loadAllData}
+                />
+              )}
+            </>
+          ) : isStaff ? (
+            <>
+              {activeTab === 'pos' && (
+                <OwnerPOSView
+                  queues={queues}
+                  services={services}
+                  dailyRecap={dailyRecap}
+                  onRefreshData={loadAllData}
+                />
+              )}
+              {activeTab === 'queue' && (
+                <CustomerView
+                  currentUser={currentUser}
+                  queues={queues}
+                  services={services}
+                  activeSubTab="queue"
+                  onOpenAuth={() => setAuthModalOpen(true)}
+                  onRefreshData={loadAllData}
+                />
+              )}
+            </>
+          ) : (
+            <CustomerView
+              currentUser={currentUser}
+              queues={queues}
+              services={services}
+              activeSubTab={activeTab as 'queue' | 'services_view' | 'history' | 'notifications'}
+              onOpenAuth={() => setAuthModalOpen(true)}
+              onRefreshData={loadAllData}
+            />
+          )}
+        </main>
 
-      {/* Mobile-First Tactile Bottom Navigation */}
-      <BottomNav
-        currentUser={currentUser}
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        unreadNotifsCount={unreadNotifsCount}
-      />
+        {/* Mobile-First Tactile Bottom Navigation */}
+        <BottomNav
+          currentUser={currentUser}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          unreadNotifsCount={unreadNotifsCount}
+        />
 
-      {/* Mobile Profile & Preferences Bottom Sheet */}
-      <ProfileSheet
-        isOpen={profileSheetOpen}
-        onClose={() => setProfileSheetOpen(false)}
-        currentUser={currentUser}
-        onLogout={handleLogout}
-        onOpenAuth={() => {
-          setProfileSheetOpen(false);
-          setAuthModalOpen(true);
-        }}
-        canInstallPWA={!!deferredPrompt}
-        onInstallPWA={handleInstallPWA}
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-      />
+        {/* Mobile Profile & Preferences Bottom Sheet */}
+        <ProfileSheet
+          isOpen={profileSheetOpen}
+          onClose={() => setProfileSheetOpen(false)}
+          currentUser={currentUser}
+          onLogout={handleLogout}
+          onOpenAuth={() => {
+            setProfileSheetOpen(false);
+            setAuthModalOpen(true);
+          }}
+          canInstallPWA={!!deferredPrompt}
+          onInstallPWA={handleInstallPWA}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+        />
 
-      {/* Auth Modal */}
-      <AuthModal
-        isOpen={authModalOpen}
-        onClose={() => setAuthModalOpen(false)}
-        onLoginSuccess={handleLoginSuccess}
-      />
-    </div>
+        {/* Auth Modal */}
+        <AuthModal
+          isOpen={authModalOpen}
+          onClose={() => setAuthModalOpen(false)}
+          onLoginSuccess={handleLoginSuccess}
+        />
+      </div>
+    </ToastProvider>
   );
 }

@@ -12,6 +12,8 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { playSuccessSound } from '../lib/audio';
+import { ConfirmModal, ConfirmDialogState } from './ConfirmModal';
+import { useToast } from './Toast';
 
 interface CustomerViewProps {
   currentUser: User | null;
@@ -79,6 +81,14 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
         ).length
       : 0;
 
+  const { showToast } = useToast();
+  const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
+
   const handleTakeQueue = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser) {
@@ -99,23 +109,33 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
       });
       playSuccessSound();
       setNotes('');
+      showToast('Nomor antrean berhasil diambil!', 'success');
       onRefreshData();
     } catch (err: any) {
-      alert(err.message || 'Gagal mengambil nomor antrean.');
+      showToast(err.message || 'Gagal mengambil nomor antrean.', 'error');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleCancelMyQueue = async (queueId: string) => {
-    if (confirm('Batalkan antrean online Anda?')) {
-      try {
-        await api.deleteQueue(queueId);
-        onRefreshData();
-      } catch (err: any) {
-        alert(err.message || 'Gagal membatalkan antrean');
-      }
-    }
+  const handleCancelMyQueue = (queueId: string) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Batalkan Antrean',
+      message: 'Apakah Anda yakin ingin membatalkan antrean online Anda? Tiket antrean akan dibatalkan.',
+      confirmText: 'Ya, Batalkan',
+      cancelText: 'Kembali',
+      variant: 'warning',
+      onConfirm: async () => {
+        try {
+          await api.deleteQueue(queueId);
+          showToast('Antrean Anda telah dibatalkan', 'info');
+          onRefreshData();
+        } catch (err: any) {
+          showToast(err.message || 'Gagal membatalkan antrean', 'error');
+        }
+      },
+    });
   };
 
   return (
@@ -304,22 +324,27 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
                       Pilih Layanan
                     </label>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {services
-                        .filter((s) => s.is_active)
-                        .map((srv) => {
-                          const isSelected = selectedServiceId === srv.id;
-                          return (
-                            <div
-                              key={srv.id}
-                              role="button"
-                              tabIndex={0}
-                              onClick={() => setSelectedServiceId(srv.id)}
-                              className={`p-3 border rounded-[10px] cursor-pointer transition-all ${
-                                isSelected
-                                  ? 'border-[#26362E] bg-[#E8ECE8]/60 ring-1 ring-[#26362E]'
-                                  : 'border-[#E5E5DF] bg-[#FFFFFF] hover:border-[#686D66]'
-                              }`}
-                            >
+                      {services.filter((s) => s.is_active).length === 0 ? (
+                        <div className="col-span-full py-6 px-4 text-center bg-[#F7F6F2] border border-dashed border-[#E5E5DF] rounded-[10px] text-xs text-[#686D66]">
+                          Belum ada katalog layanan aktif yang tersedia saat ini.
+                        </div>
+                      ) : (
+                        services
+                          .filter((s) => s.is_active)
+                          .map((srv) => {
+                            const isSelected = selectedServiceId === srv.id;
+                            return (
+                              <div
+                                key={srv.id}
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => setSelectedServiceId(srv.id)}
+                                className={`p-3 border rounded-[10px] cursor-pointer transition-all ${
+                                  isSelected
+                                    ? 'border-[#26362E] bg-[#E8ECE8]/60 ring-1 ring-[#26362E]'
+                                    : 'border-[#E5E5DF] bg-[#FFFFFF] hover:border-[#686D66]'
+                                }`}
+                              >
                               <div className="flex justify-between items-start gap-2">
                                 <h4 className="text-xs font-semibold text-[#20231F] truncate">
                                   {srv.service_name}
@@ -337,7 +362,8 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
                               </div>
                             </div>
                           );
-                        })}
+                        })
+                      )}
                     </div>
                   </div>
 
@@ -600,6 +626,12 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Sleek Minimalist In-App Confirm Modal */}
+      <ConfirmModal
+        dialog={confirmDialog}
+        onClose={() => setConfirmDialog((prev) => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 };

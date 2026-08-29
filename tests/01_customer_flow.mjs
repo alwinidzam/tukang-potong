@@ -51,8 +51,8 @@ async function runCustomerTests() {
     } else {
       console.log('Selecting service & submitting queue...');
       // Wait for service card
-      await page.waitForSelector('div[role="button"]:has-text("Signature Haircut")', { timeout: 10000 });
-      await page.locator('div[role="button"]:has-text("Signature Haircut")').first().click();
+      await page.waitForSelector('div[role="button"][tabindex="0"]', { timeout: 10000 });
+      await page.locator('div[role="button"][tabindex="0"]').first().click();
 
       // Fill notes
       const notesInput = page.locator('input[placeholder*="Misal: Low fade"], textarea').first();
@@ -69,15 +69,13 @@ async function runCustomerTests() {
       console.log('PASS: Active Ticket Card appeared on screen!');
     }
 
-    console.log('7. Testing queue cancellation...');
-    page.on('dialog', async dialog => {
-      console.log(`Accepted dialog: "${dialog.message()}"`);
-      await dialog.accept();
-    });
-
+    console.log('7. Testing queue cancellation with custom in-app confirm modal...');
     const cancelBtn = page.locator('button:has-text("Batalkan Antrean Saya")').first();
     if (await cancelBtn.isVisible()) {
       await cancelBtn.click();
+      await page.waitForSelector('#custom-confirm-modal', { timeout: 5000 });
+      console.log('PASS: Custom in-app confirm modal opened.');
+      await page.locator('#btn-confirm-proceed').click();
       await page.waitForSelector('#my-active-ticket', { state: 'detached', timeout: 10000 });
       console.log('PASS: Ticket cancelled and returned to queue form.');
     }
