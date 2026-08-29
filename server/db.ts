@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import os from 'os';
-import { getAtomicQueueNumber } from './supabase.js';
+import { getAtomicQueueNumber, pullAllFromSupabase } from './supabase.js';
 
 export type UserRole = 'OWNER' | 'STAFF' | 'CUSTOMER';
 export type UserStatus = 'ACTIVE' | 'INACTIVE';
@@ -375,7 +375,28 @@ class Database {
   }
 
   public async initCloudSync() {
-    // Cloud sync initialized via Supabase
+    try {
+      const cloudData = await pullAllFromSupabase();
+      if (cloudData) {
+        const merged: DatabaseSchema = {
+          users: cloudData.users.length > 0 ? cloudData.users : this.data.users,
+          master_hpp: cloudData.master_hpp,
+          services: cloudData.services,
+          service_hpp_relations: cloudData.service_hpp_relations,
+          queues: cloudData.queues,
+          transactions: cloudData.transactions,
+          notifications: this.data.notifications || [],
+          revoked_tokens: this.data.revoked_tokens || [],
+        };
+        this.data = sanitizeProductionData(merged, this.data.users);
+        this.saveData(this.data);
+        console.log(
+          `[Supabase Cloud Sync] Pulled: ${cloudData.services.length} services, ${cloudData.master_hpp.length} HPP, ${cloudData.queues.length} queues, ${cloudData.transactions.length} transactions, ${cloudData.users.length} users.`
+        );
+      }
+    } catch (err: any) {
+      console.warn('[Supabase Cloud Sync Init Failed]:', err.message);
+    }
   }
 
   public getData(): DatabaseSchema {

@@ -72,14 +72,84 @@ export default function App() {
     };
   }, []);
 
-  // Application Data States
-  const [queues, setQueues] = useState<QueueItem[]>([]);
-  const [services, setServices] = useState<Service[]>([]);
-  const [hppList, setHppList] = useState<MasterHPP[]>([]);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  // Application Data States (Initialized from LocalStorage cache for instant zero-flicker render)
+  const [queues, setQueues] = useState<QueueItem[]>(() => {
+    try {
+      const stored = localStorage.getItem('arez_cache_queues');
+      return stored ? JSON.parse(stored) : [];
+    } catch (_) {
+      return [];
+    }
+  });
+
+  const [services, setServices] = useState<Service[]>(() => {
+    try {
+      const stored = localStorage.getItem('arez_cache_services');
+      return stored ? JSON.parse(stored) : [];
+    } catch (_) {
+      return [];
+    }
+  });
+
+  const [hppList, setHppList] = useState<MasterHPP[]>(() => {
+    try {
+      const stored = localStorage.getItem('arez_cache_hpp');
+      return stored ? JSON.parse(stored) : [];
+    } catch (_) {
+      return [];
+    }
+  });
+
+  const [transactions, setTransactions] = useState<Transaction[]>(() => {
+    try {
+      const stored = localStorage.getItem('arez_cache_transactions');
+      return stored ? JSON.parse(stored) : [];
+    } catch (_) {
+      return [];
+    }
+  });
+
   const [analytics, setAnalytics] = useState<AnalyticsRecapResponse | null>(null);
   const [dailyRecap, setDailyRecap] = useState<DailyRecap | null>(null);
   const [unreadNotifsCount, setUnreadNotifsCount] = useState<number>(0);
+
+  // Safe State Updaters with Local Cache Persistence
+  const updateServicesState = useCallback((freshServices: Service[]) => {
+    if (Array.isArray(freshServices)) {
+      setServices(freshServices);
+      try {
+        localStorage.setItem('arez_cache_services', JSON.stringify(freshServices));
+      } catch (_) {}
+    }
+  }, []);
+
+  const updateQueuesState = useCallback((freshQueues: QueueItem[]) => {
+    if (Array.isArray(freshQueues)) {
+      freshQueues.sort((a, b) => (Number(a.queue_number) || 0) - (Number(b.queue_number) || 0));
+      setQueues(freshQueues);
+      try {
+        localStorage.setItem('arez_cache_queues', JSON.stringify(freshQueues));
+      } catch (_) {}
+    }
+  }, []);
+
+  const updateHppState = useCallback((freshHpp: MasterHPP[]) => {
+    if (Array.isArray(freshHpp)) {
+      setHppList(freshHpp);
+      try {
+        localStorage.setItem('arez_cache_hpp', JSON.stringify(freshHpp));
+      } catch (_) {}
+    }
+  }, []);
+
+  const updateTransactionsState = useCallback((freshTx: Transaction[]) => {
+    if (Array.isArray(freshTx)) {
+      setTransactions(freshTx);
+      try {
+        localStorage.setItem('arez_cache_transactions', JSON.stringify(freshTx));
+      } catch (_) {}
+    }
+  }, []);
 
   // PWA Prompt
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -130,46 +200,70 @@ export default function App() {
     }
   };
 
-  // Fetch all data safely according to user role permissions
+  // Fetch all data safely (Stale-While-Revalidate: never overwrites existing state on network error)
   const loadAllData = useCallback(async () => {
     try {
       // 1. Public Data (Queues & Services available to everyone)
-      const [qData, sData] = await Promise.all([
-        api.getQueues().catch(() => []),
-        api.getServices().catch(() => []),
-      ]);
-      setQueues(Array.isArray(qData) ? qData : []);
-      setServices(Array.isArray(sData) ? sData : []);
+      try {
+        const qData = await api.getQueues();
+        if (Array.isArray(qData)) updateQueuesState(qData);
+      } catch (err) {
+        console.warn('[Sync] Queues fetch deferred:', err);
+      }
+
+      try {
+        const sData = await api.getServices();
+        if (Array.isArray(sData)) updateServicesState(sData);
+      } catch (err) {
+        console.warn('[Sync] Services fetch deferred:', err);
+      }
 
       // 2. Staff / Owner Restricted Data
       if (isOwner || isStaff) {
-        const [hData, tData] = await Promise.all([
-          api.getHPP().catch(() => []),
-          api.getTransactions().catch(() => []),
-        ]);
-        setHppList(Array.isArray(hData) ? hData : []);
-        setTransactions(Array.isArray(tData) ? tData : []);
+        try {
+          const hData = await api.getHPP();
+          if (Array.isArray(hData)) updateHppState(hData);
+        } catch (_) {}
+
+        try {
+          const tData = await api.getTransactions();
+          if (Array.isArray(tData)) updateTransactionsState(tData);
+        } catch (_) {}
       }
 
       // 3. Owner Only Analytics
       if (isOwner) {
-        const aData = await api.getAnalyticsRecap().catch(() => null);
-        if (aData) {
-          setAnalytics(aData);
-          setDailyRecap(aData.daily || null);
-        }
+        try {
+          const aData = await api.getAnalyticsRecap();
+          if (aData) {
+            setAnalytics(aData);
+            setDailyRecap(aData.daily || null);
+          }
+        } catch (_) {}
       }
 
       // 4. Customer Notifications
       if (currentUser && currentUser.role === 'CUSTOMER') {
-        const notifs = await api.getNotifications(currentUser.id).catch(() => []);
-        const unread = Array.isArray(notifs) ? notifs.filter((n) => !n.read).length : 0;
-        setUnreadNotifsCount(unread);
+        try {
+          const notifs = await api.getNotifications(currentUser.id);
+          if (Array.isArray(notifs)) {
+            const unread = notifs.filter((n) => !n.read).length;
+            setUnreadNotifsCount(unread);
+          }
+        } catch (_) {}
       }
     } catch (err) {
-      console.error('Data load failed:', err);
+      console.error('Data load exception:', err);
     }
-  }, [currentUser, isOwner, isStaff]);
+  }, [
+    currentUser,
+    isOwner,
+    isStaff,
+    updateQueuesState,
+    updateServicesState,
+    updateHppState,
+    updateTransactionsState,
+  ]);
 
   useEffect(() => {
     loadAllData();
@@ -180,6 +274,15 @@ export default function App() {
     let eventSource: EventSource | null = null;
     let sseRetryTimer: any = null;
     let supabaseChannel: any = null;
+    let debounceTimer: any = null;
+
+    const triggerDebouncedLoad = () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        loadAllData();
+      }, 300);
+    };
+
     try {
       if (supabase) {
         supabaseChannel = supabase
@@ -191,17 +294,14 @@ export default function App() {
               if (payload.eventType === 'UPDATE' && (payload.new as any)?.status === 'IN_PROGRESS') {
                 playQueueCallSound();
               }
-              api.getQueues().then((freshQueues) => {
-                freshQueues.sort((a, b) => (Number(a.queue_number) || 0) - (Number(b.queue_number) || 0));
-                setQueues(freshQueues);
-              }).catch(() => {});
+              triggerDebouncedLoad();
             }
           )
           .on(
             'postgres_changes',
             { event: '*', schema: 'public', table: 'services' },
             () => {
-              api.getServices().then(setServices).catch(() => {});
+              triggerDebouncedLoad();
             }
           )
           .on(
@@ -209,7 +309,7 @@ export default function App() {
             { event: '*', schema: 'public', table: 'hpp_items' },
             () => {
               if (isOwner || isStaff) {
-                api.getHPP().then(setHppList).catch(() => {});
+                triggerDebouncedLoad();
               }
             }
           )
@@ -218,7 +318,7 @@ export default function App() {
             { event: '*', schema: 'public', table: 'transactions' },
             () => {
               if (isOwner || isStaff) {
-                api.getTransactions().then(setTransactions).catch(() => {});
+                triggerDebouncedLoad();
               }
             }
           )
@@ -239,6 +339,7 @@ export default function App() {
             if (parsed.type === 'QUEUE_STARTED') {
               playQueueCallSound();
             }
+            triggerDebouncedLoad();
           } catch (_) {}
         };
 
@@ -253,20 +354,17 @@ export default function App() {
 
     connectSSE();
 
-    // 3. Immediate Refresh when user switches tab or unlocks phone
+    // 3. Immediate Debounced Refresh when user switches tab or unlocks phone
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        loadAllData();
+        triggerDebouncedLoad();
       }
     };
 
     window.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', handleVisibilityChange);
 
-    // 4. Fast 3-Second Smart Polling Safety Net (DISABLED TO PREVENT FIREBASE QUOTA DDOS)
-    // const interval = setInterval(loadAllData, 3000);
-
-    // 5. Marathon Mode: Screen Wake Lock (keeps counter/tablet screen awake 24/7 without timeout)
+    // 4. Marathon Mode: Screen Wake Lock (keeps counter/tablet screen awake 24/7 without timeout)
     let wakeLockSentinel: any = null;
     const requestWakeLock = async () => {
       if ('wakeLock' in navigator && document.visibilityState === 'visible') {
@@ -286,17 +384,22 @@ export default function App() {
     document.addEventListener('visibilitychange', handleWakeLockVisibility);
 
     return () => {
+      clearTimeout(debounceTimer);
+      clearTimeout(sseRetryTimer);
       if (supabase && supabaseChannel) {
         supabase.removeChannel(supabaseChannel);
       }
-      eventSource?.close();
-      clearTimeout(sseRetryTimer);
+      if (eventSource) {
+        eventSource.close();
+      }
       window.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleVisibilityChange);
       document.removeEventListener('visibilitychange', handleWakeLockVisibility);
-      wakeLockSentinel?.release().catch(() => {});
+      if (wakeLockSentinel) {
+        wakeLockSentinel.release().catch(() => {});
+      }
     };
-  }, [loadAllData]);
+  }, [loadAllData, isOwner, isStaff]);
 
   const handleLoginSuccess = (user: User) => {
     const roleUpper = String(user.role || '').toUpperCase();

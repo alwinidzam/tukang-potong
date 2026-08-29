@@ -217,17 +217,19 @@ export const api = {
   // Queues
   // ----------------------------------------------------------------------
   async getQueues(date?: string): Promise<QueueItem[]> {
-    try {
-      const url = date ? `${API_BASE}/queues?date=${date}` : `${API_BASE}/queues`;
-      const res = await fetch(url, {
-        headers: getAuthHeaders(),
-        credentials: 'include',
-      });
-      if (!res.ok) return [];
-      return safeJson(res);
-    } catch (_) {
-      return [];
+    const url = date ? `${API_BASE}/queues?date=${date}` : `${API_BASE}/queues`;
+    const res = await fetch(url, {
+      headers: getAuthHeaders(),
+      credentials: 'include',
+    });
+    if (!res.ok) {
+      throw new Error(`Failed to fetch queues: HTTP ${res.status}`);
     }
+    const data = await safeJson(res);
+    if (!Array.isArray(data)) {
+      throw new Error('Invalid queues response format');
+    }
+    return data;
   },
 
   async createQueue(payload: {
@@ -306,16 +308,18 @@ export const api = {
   // Master HPP (Bahan Baku & Biaya Operasional)
   // ----------------------------------------------------------------------
   async getHPP(): Promise<MasterHPP[]> {
-    try {
-      const res = await fetch(`${API_BASE}/hpp`, {
-        headers: getAuthHeaders(),
-        credentials: 'include',
-      });
-      if (!res.ok) return [];
-      return safeJson(res);
-    } catch (_) {
-      return [];
+    const res = await fetch(`${API_BASE}/hpp`, {
+      headers: getAuthHeaders(),
+      credentials: 'include',
+    });
+    if (!res.ok) {
+      throw new Error(`Failed to fetch HPP: HTTP ${res.status}`);
     }
+    const data = await safeJson(res);
+    if (!Array.isArray(data)) {
+      throw new Error('Invalid HPP response format');
+    }
+    return data;
   },
 
   async getHPPById(id: string): Promise<MasterHPP & { using_services?: { service_id: string; service_name: string; quantity_used: number }[] }> {
@@ -385,16 +389,18 @@ export const api = {
   // Services
   // ----------------------------------------------------------------------
   async getServices(): Promise<Service[]> {
-    try {
-      const res = await fetch(`${API_BASE}/services`, {
-        headers: getAuthHeaders(),
-        credentials: 'include',
-      });
-      if (!res.ok) return [];
-      return safeJson(res);
-    } catch (_) {
-      return [];
+    const res = await fetch(`${API_BASE}/services`, {
+      headers: getAuthHeaders(),
+      credentials: 'include',
+    });
+    if (!res.ok) {
+      throw new Error(`Failed to fetch services: HTTP ${res.status}`);
     }
+    const data = await safeJson(res);
+    if (!Array.isArray(data)) {
+      throw new Error('Invalid services response format');
+    }
+    return data;
   },
 
   async createService(payload: {
@@ -443,16 +449,18 @@ export const api = {
   // Transactions & Direct POS
   // ----------------------------------------------------------------------
   async getTransactions(limit: number = 100): Promise<Transaction[]> {
-    try {
-      const res = await fetch(`${API_BASE}/transactions?limit=${limit}`, {
-        headers: getAuthHeaders(),
-        credentials: 'include',
-      });
-      if (!res.ok) return [];
-      return safeJson(res);
-    } catch (_) {
-      return [];
+    const res = await fetch(`${API_BASE}/transactions?limit=${limit}`, {
+      headers: getAuthHeaders(),
+      credentials: 'include',
+    });
+    if (!res.ok) {
+      throw new Error(`Failed to fetch transactions: HTTP ${res.status}`);
     }
+    const data = await safeJson(res);
+    if (!Array.isArray(data)) {
+      throw new Error('Invalid transactions response format');
+    }
+    return data;
   },
 
   async directPOSCheckout(payload: {

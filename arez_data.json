@@ -4,23 +4,141 @@
       "id": "usr-admin",
       "role": "OWNER",
       "status": "ACTIVE",
+      "google_id": null,
       "username": "CEO POTONG",
-      "password_hash": "pbkdf2_sha256$100000$10527778eb7f556316715a327bad33c5$b1f7c28e6fc6e121785d9e2e8351c8a90403543463507e9105c65039dae0c1ba7f76d12a1d6493d76b9a223409a5ff283da0d4b034f84543007f92bbfbcab9da",
       "full_name": "Aris (CEO Arez Barbershop)",
       "email": "owner@arezbarbershop.com",
       "phone": "081288990011",
+      "avatar_url": "",
+      "total_visits": 1,
+      "last_visit_at": null,
+      "favorite_day": "Sabtu",
+      "favorite_hour": "15:00 - 18:00",
+      "favorite_service": "Signature Haircut (Standard)",
+      "created_at": "2026-08-29T03:01:13.395+00:00",
+      "updated_at": "2026-08-29T03:01:13.417+00:00",
+      "last_login_at": "2026-08-29T03:12:32.132Z",
+      "password_hash": "pbkdf2_sha256$100000$ca2119374582fb66e6dfebe8c6e3a88c$7670886152c0c828802672ebc3b6ca0ace04fa62cef009663e627314e6bc73dc133cd7fa4a4f385693eb3c1447b44a821a6841132b375a02e78d4d6c00c753c0"
+    },
+    {
+      "id": "usr-cust-1787973117795",
+      "role": "CUSTOMER",
+      "status": "ACTIVE",
+      "google_id": "guest-1787973117789",
+      "full_name": "Tamu Tester 964",
+      "email": "tamu1787973117580@areztest.com",
+      "phone": "081293635388",
+      "avatar_url": "https://api.dicebear.com/7.x/initials/svg?seed=Tamu%20Tester%20964",
+      "total_visits": 1,
+      "last_visit_at": "2026-08-29T03:11:57.795Z",
+      "favorite_day": "Sabtu",
+      "favorite_hour": "15:00 - 18:00",
+      "favorite_service": "Signature Haircut (Standard)",
+      "created_at": "2026-08-29T03:11:57.795Z",
+      "updated_at": "2026-08-29T03:11:57.795Z"
+    },
+    {
+      "id": "usr-staff-1787973144192",
+      "role": "STAFF",
+      "status": "ACTIVE",
+      "username": "dimas_21",
+      "password_hash": "pbkdf2_sha256$100000$cdaffe25d9c7a8a3e40f89c3f430fe52$69611724134756e30a02be6733326af503148f4fb7905799203a2b5de8df70d24a5d4b8660c36c874232e8027e6ec7d06c8a0e64f6bedf71b8f699a2e23ef948",
+      "full_name": "Barber Dimas 21",
+      "email": "dimas_21@arezbarbershop.com",
+      "phone": "081288085656",
+      "avatar_url": "https://api.dicebear.com/7.x/bottts/svg?seed=dimas_21",
       "total_visits": 0,
       "last_visit_at": null,
-      "created_at": "2026-08-29T03:01:13.607Z",
-      "updated_at": "2026-08-29T03:01:13.607Z",
-      "last_login_at": "2026-08-29T03:01:13.607Z"
+      "created_at": "2026-08-29T03:12:24.192Z",
+      "updated_at": "2026-08-29T03:12:24.192Z",
+      "last_login_at": null
     }
   ],
-  "master_hpp": [],
-  "services": [],
+  "master_hpp": [
+    {
+      "id": "hpp-1787973105681-856",
+      "item_name": "Silet Platinum Tester 34",
+      "unit_cost": 3500,
+      "unit_type": "pcs",
+      "category": "Bahan Baku & Steril",
+      "is_active": true,
+      "description": "Pisau cukur tajam steril sekali pakai",
+      "created_at": "2026-08-29T03:11:45.681Z",
+      "updated_at": "2026-08-29T03:11:45.681Z"
+    }
+  ],
+  "services": [
+    {
+      "id": "srv-1787973107197",
+      "service_name": "Executive Royal Grooming 483",
+      "selling_price": 85000,
+      "duration_mins": 25,
+      "is_active": true,
+      "description": "Layanan potong rambut eksekutif lengkap dengan cuci rambut dan hair tonic"
+    }
+  ],
   "service_hpp_relations": [],
-  "queues": [],
-  "transactions": [],
-  "notifications": [],
-  "revoked_tokens": []
+  "queues": [
+    {
+      "id": "q-1787973130714-882",
+      "queue_date": "2026-08-29",
+      "queue_number": 1,
+      "customer_id": null,
+      "walk_in_name": "WalkIn Tester 58",
+      "customer_phone": "081359355815",
+      "service_id": "srv-1787973107197",
+      "service_name": "Executive Royal Grooming 483",
+      "service_price": 85000,
+      "service_duration": 25,
+      "customer_name": "WalkIn Tester 58",
+      "source": "WALK_IN",
+      "status": "COMPLETED",
+      "start_time": "2026-08-29T03:12:11.174Z",
+      "end_time": "2026-08-29T03:12:13.046Z",
+      "created_at": "2026-08-29T03:12:10.714Z",
+      "notes": "Model Undercut rapih"
+    }
+  ],
+  "transactions": [
+    {
+      "id": "trx-1787973133046",
+      "queue_id": "q-1787973130714-882",
+      "customer_name": "WalkIn Tester 58 (Walk-In)",
+      "service_name": "Executive Royal Grooming 483",
+      "total_price": 81000,
+      "discount": 5000,
+      "tax": 1000,
+      "total_hpp": 0,
+      "net_profit": 81000,
+      "payment_method": "CASH",
+      "created_at": "2026-08-29T03:12:13.046Z"
+    }
+  ],
+  "notifications": [
+    {
+      "id": "notif-staff-1787973144288",
+      "user_id": "usr-admin",
+      "title": "Akun Staff Dibuat",
+      "message": "Owner membuat akun staff baru: Barber Dimas 21 (@dimas_21) dengan status ACTIVE.",
+      "type": "SYSTEM",
+      "read": false,
+      "created_at": "2026-08-29T03:12:24.192Z"
+    },
+    {
+      "id": "notif-1787973119219",
+      "user_id": "usr-cust-1787973117795",
+      "title": "Nomor Antrean Anda: #1",
+      "message": "Harap tiba di lokasi 15 menit sebelum visual progres antrean penuh. Layanan: Executive Royal Grooming 483",
+      "type": "REMINDER_15M",
+      "created_at": "2026-08-29T03:11:59.219Z",
+      "read": false
+    }
+  ],
+  "revoked_tokens": [
+    "arez_v2.usr-admin.OWNER.1819509103490.886d72cb2493985b51e8f1f50b993d524eaeec05a0d2723e66f4353b557b41af",
+    "arez_v2.usr-cust-1787973117795.CUSTOMER.1819509118202.42cbbdfac2d308e4fd9652d0c42943a347d5b99d69af6b03347fbbd8b9fa01a3",
+    "arez_v2.usr-admin.OWNER.1819509129667.8241332757d8e9fa436f62eb20a609e2c114cb4090a2d9ecd3d1cfc2a5a5b7bf",
+    "arez_v2.usr-admin.OWNER.1819509143236.5653a21c7fd485920f838d7d53a16cbac3a144e5764b5c6eebf955cb9d31ebbc",
+    "arez_v2.usr-admin.OWNER.1819509152503.f0caf3698e1afd05426b41f6036ec4bdabded0e7b05c854f588503e5255ef159"
+  ]
 }
