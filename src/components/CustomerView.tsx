@@ -74,12 +74,17 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
 
   const peopleAheadCount =
     myActiveTicket && myActiveTicket.status === 'WAITING'
-      ? queues.filter(
-          (q) =>
-            (q.status === 'WAITING' || q.status === 'IN_PROGRESS') &&
-            q.queue_number < myActiveTicket.queue_number
-        ).length
+      ? myActiveTicket.fifo_rank
+        ? Math.max(0, myActiveTicket.fifo_rank - 1)
+        : queues.filter(
+            (q) =>
+              q.status === 'WAITING' &&
+              q.queue_date === myActiveTicket.queue_date &&
+              q.queue_number < myActiveTicket.queue_number
+          ).length
       : 0;
+
+  const estimatedWaitMins = myActiveTicket?.estimated_wait_mins ?? peopleAheadCount * 18;
 
   const { showToast } = useToast();
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState>({
@@ -197,14 +202,18 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
                 <Scissors className="w-3.5 h-3.5 text-[#26362E]" />
                 Kursi Utama Grooming
               </span>
-              <span className="text-[11px] text-[#686D66] font-medium">Standar 18m / Sesi</span>
+              <span className="text-[11px] text-[#686D66] font-medium">
+                {activeInProgressQueue
+                  ? `Standar ${activeInProgressQueue.service_duration || 18}m / Sesi`
+                  : 'Antrean Strict FIFO'}
+              </span>
             </div>
 
             {activeInProgressQueue ? (
               <BatteryProgressBar
                 startTime={activeInProgressQueue.start_time}
                 isActive={true}
-                totalDurationMins={18}
+                totalDurationMins={activeInProgressQueue.service_duration || 18}
                 customerName={activeInProgressQueue.customer_name}
                 serviceName={activeInProgressQueue.service_name}
                 queueNumber={activeInProgressQueue.queue_number}
@@ -263,8 +272,11 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
                   </div>
                   {myActiveTicket.status === 'WAITING' && (
                     <div className="mt-2 text-right">
-                      <p className="text-[10px] text-[#686D66]">Di depan Anda:</p>
+                      <p className="text-[10px] text-[#686D66]">Di depan Anda (FIFO):</p>
                       <p className="text-sm font-bold text-[#20231F]">{peopleAheadCount} Tamu</p>
+                      <p className="text-[10px] font-medium text-[#4F7A5A]">
+                        Est. Tunggu: ~{estimatedWaitMins} mnt
+                      </p>
                     </div>
                   )}
                 </div>
@@ -444,9 +456,16 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
                           #{q.queue_number}
                         </span>
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs font-medium text-[#20231F] truncate">
-                            {q.customer_name} {isMyTicket && <span className="text-[#26362E] font-semibold">(Anda)</span>}
-                          </p>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <p className="text-xs font-medium text-[#20231F] truncate">
+                              {q.customer_name} {isMyTicket && <span className="text-[#26362E] font-semibold">(Anda)</span>}
+                            </p>
+                            {q.is_fifo_head && q.status === 'WAITING' && (
+                              <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-[#E8ECE8] text-[#26362E]">
+                                FIFO NEXT
+                              </span>
+                            )}
+                          </div>
                           <p className="text-[11px] text-[#686D66] truncate">{q.service_name}</p>
                         </div>
                       </div>

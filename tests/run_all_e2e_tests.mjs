@@ -2,11 +2,13 @@ import { spawn } from 'child_process';
 import path from 'path';
 
 const testSuites = [
+  { name: 'Suite 0: Big O Complexity & FIFO Algorithms Unit Test', file: 'tests/00_fifo_and_big_o_unit.ts', runner: 'node_modules/tsx/dist/cli.mjs' },
   { name: 'Suite 3: Master HPP Inventory, Services & Recipe Margin', file: 'tests/03_master_hpp_and_services_flow.mjs' },
   { name: 'Suite 1: Customer Experience & Online Queue Lifecycle', file: 'tests/01_customer_flow.mjs' },
   { name: 'Suite 2: Owner POS, Real-time Queue & Cashier Checkout', file: 'tests/02_owner_pos_flow.mjs' },
   { name: 'Suite 4: Staff Management, RBAC & Customer CRM', file: 'tests/04_staff_and_crm_flow.mjs' },
   { name: 'Suite 5: Financial Analytics, KPI Periods & Reporting', file: 'tests/05_analytics_and_audit_flow.mjs' },
+  { name: 'Suite 6: Security Hardening, Strict FIFO & Big O Lab', file: 'tests/06_fifo_big_o_and_security.mjs' },
 ];
 
 async function runSuite(suite) {
@@ -17,7 +19,8 @@ async function runSuite(suite) {
     console.log(`===============================================================`);
 
     const start = Date.now();
-    const child = spawn(process.execPath, [suite.file], {
+    const args = suite.runner ? [suite.runner, suite.file] : [suite.file];
+    const child = spawn(process.execPath, args, {
       cwd: process.cwd(),
       stdio: 'inherit',
       shell: false,

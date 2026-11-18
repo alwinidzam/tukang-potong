@@ -3,6 +3,13 @@ import path from 'path';
 import crypto from 'crypto';
 import os from 'os';
 import { getAtomicQueueNumber, pullAllFromSupabase } from './supabase.js';
+import {
+  IndexedFIFOQueue,
+  FIFOTraceRingBuffer,
+  HPPStockBatch,
+  FIFOBatchConsumptionDetail,
+  consumeBatchesFIFO,
+} from './algorithms.js';
 
 export type UserRole = 'OWNER' | 'STAFF' | 'CUSTOMER';
 export type UserStatus = 'ACTIVE' | 'INACTIVE';
@@ -21,7 +28,7 @@ export interface User {
   avatar_url?: string;
   total_visits: number;
   last_visit_at?: string | null;
-  deleted_at?: string | null; // Soft-delete tombstone
+  deleted_at?: string | null;
   favorite_day?: string;
   favorite_hour?: string;
   favorite_service?: string;
@@ -88,6 +95,7 @@ export interface Transaction {
   total_hpp: number;
   net_profit: number;
   payment_method: 'CASH' | 'QRIS' | 'DEBIT' | 'TRANSFER';
+  fifo_batches_used?: FIFOBatchConsumptionDetail[];
   created_at: string;
 }
 
@@ -101,39 +109,49 @@ export interface NotificationLog {
   read: boolean;
 }
 
-const isServerless = process.env.VERCEL || process.env.NODE_ENV === 'production' || process.env.AWS_LAMBDA_FUNCTION_VERSION;
+const isServerless = Boolean(
+  process.env.VERCEL || process.env.NODE_ENV === 'production' || process.env.AWS_LAMBDA_FUNCTION_VERSION
+);
 const DB_FILE = isServerless ? path.join(os.tmpdir(), 'arez_data.json') : path.join(process.cwd(), 'arez_data.json');
-const DB_BACKUP_FILE = isServerless ? path.join(os.tmpdir(), 'arez_data.json.bak') : path.join(process.cwd(), 'arez_data.json.bak');
+const DB_BACKUP_FILE = isServerless
+  ? path.join(os.tmpdir(), 'arez_data.json.bak')
+  : path.join(process.cwd(), 'arez_data.json.bak');
 
 export function getJakartaDateStr(d?: Date): string {
   const targetDate = d || new Date();
-  return targetDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' }); // Outputs YYYY-MM-DD
+  return targetDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
 }
 
-interface DatabaseSchema {
+export interface DatabaseSchema {
   users: User[];
   master_hpp: MasterHPP[];
+  hpp_batches: HPPStockBatch[];
   services: Service[];
   service_hpp_relations: ServiceHPPRelation[];
   queues: QueueItem[];
   transactions: Transaction[];
   notifications: NotificationLog[];
   revoked_tokens: string[];
+  revoked_before?: Record<string, number>;
 }
 
 export const DB_PASSWORD_HASH_ITERATIONS = 100000;
 
-// Cryptographic hash helper for database seeding & migrations
 export function hashPasswordInternal(password: string): string {
   const salt = crypto.randomBytes(16).toString('hex');
   const hash = crypto.pbkdf2Sync(password, salt, DB_PASSWORD_HASH_ITERATIONS, 64, 'sha256').toString('hex');
   return `pbkdf2_sha256$${DB_PASSWORD_HASH_ITERATIONS}$${salt}$${hash}`;
 }
 
-// Initial Seed Data matching Arez Barbershop High-End Monochromatic Archetype
+export function compareQueueFIFO(a: QueueItem, b: QueueItem): number {
+  const dateCmp = String(a.queue_date || '').localeCompare(String(b.queue_date || ''));
+  if (dateCmp !== 0) return dateCmp;
+  const numDiff = (Number(a.queue_number) || 0) - (Number(b.queue_number) || 0);
+  if (numDiff !== 0) return numDiff;
+  return new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
+}
+
 const getInitialSeedData = (): DatabaseSchema => {
-  const now = new Date();
-  const todayStr = getJakartaDateStr(now);
   const ownerPassword = process.env.OWNER_DEFAULT_PASSWORD || 'Arez008';
 
   const users: User[] = [
@@ -157,16 +175,18 @@ const getInitialSeedData = (): DatabaseSchema => {
   return {
     users,
     master_hpp: [],
+    hpp_batches: [],
     services: [],
     service_hpp_relations: [],
     queues: [],
     transactions: [],
     notifications: [],
     revoked_tokens: [],
+    revoked_before: {},
   };
 };
 
-function sanitizeProductionData(raw: DatabaseSchema, existingUsers: User[] = []): DatabaseSchema {
+function sanitizeProductionData(raw: Partial<DatabaseSchema>, existingUsers: User[] = []): DatabaseSchema {
   const dummyUserIds = new Set(['usr-cust-1', 'usr-cust-2', 'usr-cust-3', 'usr-staff-1']);
   const dummyQueueIds = new Set(['q-101', 'q-102', 'q-103', 'q-104']);
   const dummyTrxIds = new Set(['trx-1', 'trx-past-1', 'trx-past-2', 'trx-past-3', 'trx-past-4', 'trx-past-5']);
@@ -180,22 +200,31 @@ function sanitizeProductionData(raw: DatabaseSchema, existingUsers: User[] = [])
   }
 
   const sanitizedUsers = (raw.users || [])
-    .filter(u => !dummyUserIds.has(u.id))
-    .map(user => {
+    .filter((u) => !dummyUserIds.has(u.id))
+    .map((user) => {
       const u: any = { ...user };
       const roleUpper = String(u.role || '').toUpperCase();
 
-      // STRICT SINGLE OWNER CONSTRAINT:
-      // Only the designated primary account (usr-admin / CEO POTONG) can ever be OWNER
-      const isPrimaryOwner = u.id === 'usr-admin' || (u.username && u.username.toLowerCase() === 'ceo potong');
+      const isPrimaryOwner =
+        u.id === 'usr-admin' ||
+        u.id === 'usr-super-admin-01' ||
+        (u.username && u.username.toLowerCase() === 'ceo potong');
+
       if (isPrimaryOwner) {
         u.id = 'usr-admin';
         u.role = 'OWNER';
         u.username = process.env.OWNER_USERNAME || 'CEO POTONG';
         u.full_name = 'Aris (CEO Arez Barbershop)';
         u.status = 'ACTIVE';
-      } else if (roleUpper === 'STAFF' || roleUpper === 'BARBER' || roleUpper === 'CASHIER' || roleUpper === 'ADMIN' || roleUpper === 'SUPER_ADMIN' || roleUpper === 'MANAGER' || roleUpper === 'OWNER') {
-        // Any other non-primary account automatically and strictly becomes STAFF
+      } else if (
+        roleUpper === 'STAFF' ||
+        roleUpper === 'BARBER' ||
+        roleUpper === 'CASHIER' ||
+        roleUpper === 'ADMIN' ||
+        roleUpper === 'SUPER_ADMIN' ||
+        roleUpper === 'MANAGER' ||
+        roleUpper === 'OWNER'
+      ) {
         u.role = 'STAFF';
       } else {
         u.role = 'CUSTOMER';
@@ -204,7 +233,6 @@ function sanitizeProductionData(raw: DatabaseSchema, existingUsers: User[] = [])
       if (!u.status) {
         u.status = 'ACTIVE';
       }
-      // Preserve password_hash from existing memory if stripped by cloud sync
       if (!u.password_hash && u.id) {
         const existing = existingMap.get(u.id) || (u.username ? existingMap.get(u.username.toLowerCase()) : undefined);
         if (existing && existing.password_hash) {
@@ -220,16 +248,14 @@ function sanitizeProductionData(raw: DatabaseSchema, existingUsers: User[] = [])
       return u as User;
     });
 
-  // Inject any users that exist in local memory but haven't propagated to Firestore yet
-  const cloudUserIds = new Set(sanitizedUsers.map(u => u.id));
+  const cloudUserIds = new Set(sanitizedUsers.map((u) => u.id));
   for (const localUser of existingUsers) {
     if (!cloudUserIds.has(localUser.id) && !dummyUserIds.has(localUser.id)) {
       sanitizedUsers.push(localUser);
     }
   }
 
-  // Ensure single usr-admin exists as OWNER with valid credentials
-  let adminUser = sanitizedUsers.find(u => u.id === 'usr-admin');
+  let adminUser = sanitizedUsers.find((u) => u.id === 'usr-admin');
   if (!adminUser) {
     const defaultSeed = getInitialSeedData();
     sanitizedUsers.push(...defaultSeed.users);
@@ -243,7 +269,6 @@ function sanitizeProductionData(raw: DatabaseSchema, existingUsers: User[] = [])
     }
   }
 
-  // Deduplicate users by ID, ensuring usr-admin appears only once
   const seenIds = new Set<string>();
   const finalUsers: User[] = [];
   for (const u of sanitizedUsers) {
@@ -253,14 +278,22 @@ function sanitizeProductionData(raw: DatabaseSchema, existingUsers: User[] = [])
     }
   }
 
-  const sanitizedQueues = (raw.queues || []).filter(q => !dummyQueueIds.has(q.id) && !dummyUserIds.has(q.customer_id || ''));
-  const sanitizedTransactions = (raw.transactions || []).filter(t => !dummyTrxIds.has(t.id));
-  const sanitizedNotifs = (raw.notifications || []).filter(n => !dummyNotifIds.has(n.id) && !dummyUserIds.has(n.user_id || ''));
+  const sanitizedQueues = (raw.queues || []).filter(
+    (q) => !dummyQueueIds.has(q.id) && !dummyUserIds.has(q.customer_id || '')
+  );
 
-  // Deduplicate master_hpp by ID
+  // Store chronologically ascending so appends are O(1) push and tail pagination is O(K)
+  const sanitizedTransactions = (raw.transactions || [])
+    .filter((t) => !dummyTrxIds.has(t.id))
+    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+  const sanitizedNotifs = (raw.notifications || [])
+    .filter((n) => !dummyNotifIds.has(n.id) && !dummyUserIds.has(n.user_id || ''))
+    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
   const seenHppIds = new Set<string>();
   const sanitizedHPP: MasterHPP[] = [];
-  for (const h of (raw.master_hpp || [])) {
+  for (const h of raw.master_hpp || []) {
     if (h && h.id && !seenHppIds.has(h.id)) {
       seenHppIds.add(h.id);
       sanitizedHPP.push({
@@ -271,59 +304,187 @@ function sanitizeProductionData(raw: DatabaseSchema, existingUsers: User[] = [])
     }
   }
 
-  // Deduplicate services by ID
+  const seenBatchIds = new Set<string>();
+  const sanitizedBatches: HPPStockBatch[] = [];
+  for (const b of raw.hpp_batches || []) {
+    if (b && b.id && !seenBatchIds.has(b.id) && seenHppIds.has(b.hpp_id)) {
+      seenBatchIds.add(b.id);
+      sanitizedBatches.push({
+        ...b,
+        quantity_initial: Math.max(0, Number(b.quantity_initial) || 0),
+        quantity_remaining: Math.max(0, Number(b.quantity_remaining) || 0),
+        unit_cost: Math.max(0, Number(b.unit_cost) || 0),
+        received_at: b.received_at || new Date().toISOString(),
+      });
+    }
+  }
+  sanitizedBatches.sort((a, b) => new Date(a.received_at).getTime() - new Date(b.received_at).getTime());
+
   const seenServiceIds = new Set<string>();
   const sanitizedServices: Service[] = [];
-  for (const s of (raw.services || [])) {
+  for (const s of raw.services || []) {
     if (s && s.id && !seenServiceIds.has(s.id)) {
       seenServiceIds.add(s.id);
       sanitizedServices.push(s);
     }
   }
 
-  // Deduplicate and strictly validate service_hpp_relations
   const relationMap = new Map<string, ServiceHPPRelation>();
-  for (const rel of (raw.service_hpp_relations || [])) {
+  for (const rel of raw.service_hpp_relations || []) {
     if (rel && rel.service_id && rel.hpp_id) {
       if (seenServiceIds.has(rel.service_id) && seenHppIds.has(rel.hpp_id)) {
         const key = `${rel.service_id}___${rel.hpp_id}`;
         relationMap.set(key, {
           service_id: rel.service_id,
           hpp_id: rel.hpp_id,
-          quantity_used: Math.max(1, Number(rel.quantity_used) || 1),
+          quantity_used: Math.max(0.1, Number(rel.quantity_used) || 1),
         });
       }
     }
   }
   const sanitizedRelations = Array.from(relationMap.values());
 
+  // Prune expired revoked tokens to avoid unbounded growth
+  const nowMs = Date.now();
+  const activeRevoked = (raw.revoked_tokens || []).filter((tok) => {
+    if (typeof tok !== 'string') return false;
+    if (tok.startsWith('arez_v2.')) {
+      const parts = tok.split('.');
+      const exp = parseInt(parts[3] || '', 10);
+      if (!isNaN(exp) && exp < nowMs) return false;
+    }
+    return true;
+  });
+
   return {
     users: finalUsers,
     master_hpp: sanitizedHPP,
+    hpp_batches: sanitizedBatches,
     services: sanitizedServices,
     service_hpp_relations: sanitizedRelations,
     queues: sanitizedQueues,
     transactions: sanitizedTransactions,
     notifications: sanitizedNotifs,
-    revoked_tokens: raw.revoked_tokens || [],
+    revoked_tokens: activeRevoked,
+    revoked_before: raw.revoked_before || {},
   };
 }
 
 class Database {
   private data: DatabaseSchema;
   private isWriting = false;
+  private syncPromise: Promise<void> | null = null;
+  private hasAttemptedCloudSync = false;
+
+  // O(1) Hash Map & Set Indexes + FIFO Linked Queue
+  public usersById = new Map<string, User>();
+  public usersByEmail = new Map<string, User>();
+  public usersByUsername = new Map<string, User>();
+  public hppById = new Map<string, MasterHPP>();
+  public batchesByHppId = new Map<string, HPPStockBatch[]>();
+  public servicesById = new Map<string, Service>();
+  public relationsByServiceId = new Map<string, ServiceHPPRelation[]>();
+  public hppUsageCount = new Map<string, number>();
+  public queuesById = new Map<string, QueueItem>();
+  public waitingFIFO = new IndexedFIFOQueue<QueueItem>();
+  public txByQueueId = new Map<string, Transaction>();
+  public maxQueueNumByDate = new Map<string, number>();
+  public revokedTokensSet = new Set<string>();
+  public traceBuffer = new FIFOTraceRingBuffer(60);
 
   constructor() {
     this.data = this.loadData();
+    this.rebuildIndexes();
+  }
+
+  /**
+   * Rebuilds all O(1) hash maps, sets, and FIFO queues from current snapshot in O(N log K).
+   * Once built, all hot-path reads, enqueues, dequeues, skips, and lookups execute in O(1).
+   */
+  public rebuildIndexes(): void {
+    this.usersById.clear();
+    this.usersByEmail.clear();
+    this.usersByUsername.clear();
+    for (const u of this.data.users) {
+      if (u.id) this.usersById.set(u.id, u);
+      if (u.email) this.usersByEmail.set(u.email.toLowerCase(), u);
+      if (u.username) this.usersByUsername.set(u.username.toLowerCase(), u);
+    }
+
+    this.hppById.clear();
+    this.batchesByHppId.clear();
+    for (const h of this.data.master_hpp) {
+      this.hppById.set(h.id, h);
+      this.batchesByHppId.set(h.id, []);
+    }
+
+    // Batches are kept sorted by received_at ASC so batch[0..n] is always FIFO consumption order
+    for (const b of this.data.hpp_batches) {
+      let arr = this.batchesByHppId.get(b.hpp_id);
+      if (!arr) {
+        arr = [];
+        this.batchesByHppId.set(b.hpp_id, arr);
+      }
+      arr.push(b);
+    }
+    for (const arr of this.batchesByHppId.values()) {
+      arr.sort((a, b) => new Date(a.received_at).getTime() - new Date(b.received_at).getTime());
+    }
+
+    this.servicesById.clear();
+    for (const s of this.data.services) {
+      this.servicesById.set(s.id, s);
+    }
+
+    this.relationsByServiceId.clear();
+    this.hppUsageCount.clear();
+    for (const rel of this.data.service_hpp_relations) {
+      let list = this.relationsByServiceId.get(rel.service_id);
+      if (!list) {
+        list = [];
+        this.relationsByServiceId.set(rel.service_id, list);
+      }
+      list.push(rel);
+      this.hppUsageCount.set(rel.hpp_id, (this.hppUsageCount.get(rel.hpp_id) || 0) + 1);
+    }
+
+    this.queuesById.clear();
+    this.maxQueueNumByDate.clear();
+    const waitingItems: QueueItem[] = [];
+
+    for (const q of this.data.queues) {
+      this.queuesById.set(q.id, q);
+      const qNum = Number(q.queue_number) || 0;
+      const currMax = this.maxQueueNumByDate.get(q.queue_date) || 0;
+      if (qNum > currMax) {
+        this.maxQueueNumByDate.set(q.queue_date, qNum);
+      }
+      if (q.status === 'WAITING') {
+        waitingItems.push(q);
+      }
+    }
+
+    this.waitingFIFO.rebuild(waitingItems, compareQueueFIFO);
+
+    this.txByQueueId.clear();
+    for (const tx of this.data.transactions) {
+      if (tx.queue_id) {
+        this.txByQueueId.set(tx.queue_id, tx);
+      }
+    }
+
+    this.revokedTokensSet.clear();
+    for (const t of this.data.revoked_tokens || []) {
+      this.revokedTokensSet.add(t);
+    }
   }
 
   private loadData(): DatabaseSchema {
     try {
       if (fs.existsSync(DB_FILE)) {
         const fileContent = fs.readFileSync(DB_FILE, 'utf-8');
-        const parsed: DatabaseSchema = JSON.parse(fileContent);
+        const parsed: Partial<DatabaseSchema> = JSON.parse(fileContent);
 
-        // Security Migration: Clean up plaintext passwords, migrate roles, and ensure status
         if (parsed.users) {
           parsed.users.forEach((user: any) => {
             if (user.password && !user.password_hash) {
@@ -348,7 +509,6 @@ class Database {
 
         const sanitized = sanitizeProductionData(parsed);
 
-        // Backup existing valid data
         try {
           fs.writeFileSync(DB_BACKUP_FILE, JSON.stringify(sanitized, null, 2), 'utf-8');
         } catch (backupErr) {
@@ -374,29 +534,58 @@ class Database {
     return initial;
   }
 
-  public async initCloudSync() {
-    try {
-      const cloudData = await pullAllFromSupabase();
-      if (cloudData) {
-        const merged: DatabaseSchema = {
-          users: cloudData.users.length > 0 ? cloudData.users : this.data.users,
-          master_hpp: cloudData.master_hpp,
-          services: cloudData.services,
-          service_hpp_relations: cloudData.service_hpp_relations,
-          queues: cloudData.queues,
-          transactions: cloudData.transactions,
-          notifications: this.data.notifications || [],
-          revoked_tokens: this.data.revoked_tokens || [],
-        };
-        this.data = sanitizeProductionData(merged, this.data.users);
-        this.saveData(this.data);
-        console.log(
-          `[Supabase Cloud Sync] Pulled: ${cloudData.services.length} services, ${cloudData.master_hpp.length} HPP, ${cloudData.queues.length} queues, ${cloudData.transactions.length} transactions, ${cloudData.users.length} users.`
-        );
+  public async initCloudSync(): Promise<void> {
+    if (this.syncPromise) return this.syncPromise;
+
+    this.syncPromise = (async () => {
+      try {
+        const cloudData = await pullAllFromSupabase();
+        this.hasAttemptedCloudSync = true;
+        if (cloudData) {
+          const merged: DatabaseSchema = {
+            users: cloudData.users && cloudData.users.length > 0 ? cloudData.users : this.data.users,
+            master_hpp: cloudData.master_hpp !== null ? cloudData.master_hpp : this.data.master_hpp,
+            hpp_batches: cloudData.hpp_batches !== null ? cloudData.hpp_batches : this.data.hpp_batches,
+            services: cloudData.services !== null ? cloudData.services : this.data.services,
+            service_hpp_relations:
+              cloudData.service_hpp_relations !== null
+                ? cloudData.service_hpp_relations
+                : this.data.service_hpp_relations,
+            queues: cloudData.queues !== null ? cloudData.queues : this.data.queues,
+            transactions: cloudData.transactions !== null ? cloudData.transactions : this.data.transactions,
+            notifications:
+              cloudData.notifications !== null && cloudData.notifications.length > 0
+                ? cloudData.notifications
+                : this.data.notifications || [],
+            revoked_tokens: this.data.revoked_tokens || [],
+            revoked_before: this.data.revoked_before || {},
+          };
+          this.data = sanitizeProductionData(merged, this.data.users);
+          this.rebuildIndexes();
+          this.saveData(this.data);
+          console.log(
+            `[Supabase Cloud Sync] Pulled safely: ${this.data.services.length} services, ${this.data.master_hpp.length} HPP, ${this.data.hpp_batches.length} batches, ${this.data.queues.length} queues, ${this.data.transactions.length} transactions.`
+          );
+        }
+      } catch (err: any) {
+        this.hasAttemptedCloudSync = true;
+        console.warn('[Supabase Cloud Sync Init Failed]:', err.message);
       }
-    } catch (err: any) {
-      console.warn('[Supabase Cloud Sync Init Failed]:', err.message);
+    })();
+
+    return this.syncPromise;
+  }
+
+  public async ensureSynced(timeoutMs = 2000): Promise<void> {
+    if (this.hasAttemptedCloudSync) return;
+    if (!this.syncPromise) {
+      this.initCloudSync().catch(() => {});
     }
+    if (!this.syncPromise) return;
+    await Promise.race([
+      this.syncPromise,
+      new Promise<void>((resolve) => setTimeout(resolve, timeoutMs)),
+    ]);
   }
 
   public getData(): DatabaseSchema {
@@ -436,35 +625,99 @@ class Database {
     return this.saveData(customData);
   }
 
-  // Calculate HPP for a given service dynamically
+  /**
+   * Computes projected HPP in O(R_service) using O(1) Hash Map lookups.
+   * Uses the active FIFO Head batch unit_cost when stock batches exist; otherwise master unit_cost.
+   */
   public calculateServiceHPP(serviceId: string): number {
-    const relations = this.data.service_hpp_relations.filter(r => r.service_id === serviceId);
+    const relations = this.relationsByServiceId.get(serviceId) || [];
     let totalHPP = 0;
+
     for (const rel of relations) {
-      const hppItem = this.data.master_hpp.find(h => h.id === rel.hpp_id);
-      if (hppItem) {
-        totalHPP += (hppItem.unit_cost * rel.quantity_used);
+      const hppItem = this.hppById.get(rel.hpp_id);
+      if (!hppItem) continue;
+
+      const batches = this.batchesByHppId.get(rel.hpp_id) || [];
+      if (batches.length > 0) {
+        const sim = consumeBatchesFIFO(
+          rel.hpp_id,
+          hppItem.item_name,
+          rel.quantity_used,
+          batches,
+          hppItem.unit_cost,
+          false
+        );
+        totalHPP += sim.totalCost;
+      } else {
+        totalHPP += (hppItem.unit_cost || 0) * rel.quantity_used;
       }
     }
+
     return Math.round(totalHPP);
   }
 
-  public getNextQueueNumber(dateStr: string): number {
-    const todayQueues = (this.data.queues || []).filter(q => q.queue_date === dateStr);
-    const validNums = todayQueues
-      .map(q => Number(q.queue_number))
-      .filter(n => typeof n === 'number' && !isNaN(n) && isFinite(n) && n > 0);
+  /**
+   * Actually deducts HPP materials across oldest FIFO stock batches during checkout.
+   * Returns exact FIFO COGS and modified batches for Supabase sync.
+   */
+  public consumeServiceMaterialsFIFO(serviceId: string): {
+    totalHPP: number;
+    fifoBatchesUsed: FIFOBatchConsumptionDetail[];
+    modifiedBatches: HPPStockBatch[];
+  } {
+    const relations = this.relationsByServiceId.get(serviceId) || [];
+    let totalHPP = 0;
+    const fifoBatchesUsed: FIFOBatchConsumptionDetail[] = [];
+    const modifiedBatchMap = new Map<string, HPPStockBatch>();
 
-    if (validNums.length === 0) return 1;
-    return Math.max(...validNums) + 1;
+    for (const rel of relations) {
+      const hppItem = this.hppById.get(rel.hpp_id);
+      if (!hppItem) continue;
+
+      const batches = this.batchesByHppId.get(rel.hpp_id) || [];
+      const result = consumeBatchesFIFO(
+        rel.hpp_id,
+        hppItem.item_name,
+        rel.quantity_used,
+        batches,
+        hppItem.unit_cost,
+        true
+      );
+
+      totalHPP += result.totalCost;
+      for (const detail of result.consumedBatches) {
+        fifoBatchesUsed.push(detail);
+        const batchObj = batches.find((b) => b.id === detail.batch_id);
+        if (batchObj) {
+          modifiedBatchMap.set(batchObj.id, batchObj);
+        }
+      }
+    }
+
+    return {
+      totalHPP: Math.round(totalHPP),
+      fifoBatchesUsed,
+      modifiedBatches: Array.from(modifiedBatchMap.values()),
+    };
+  }
+
+  /** O(1) lookup for next queue number on a Jakarta date */
+  public getNextQueueNumber(dateStr: string): number {
+    return (this.maxQueueNumByDate.get(dateStr) || 0) + 1;
   }
 
   public async getSafeQueueNumber(dateStr: string): Promise<number> {
-    const localMax = this.getNextQueueNumber(dateStr);
+    const localNext = this.getNextQueueNumber(dateStr);
     try {
-      return await getAtomicQueueNumber(dateStr, localMax);
+      const safeNum = await getAtomicQueueNumber(dateStr, localNext);
+      const prevMax = this.maxQueueNumByDate.get(dateStr) || 0;
+      if (safeNum > prevMax) {
+        this.maxQueueNumByDate.set(dateStr, safeNum);
+      }
+      return safeNum;
     } catch (_) {
-      return localMax;
+      this.maxQueueNumByDate.set(dateStr, localNext);
+      return localNext;
     }
   }
 }

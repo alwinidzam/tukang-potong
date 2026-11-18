@@ -7,11 +7,13 @@ import {
   MasterHPP,
   MasterHPPCreatePayload,
   MasterHPPUpdatePayload,
+  HPPStockBatch,
   Service,
   Transaction,
   AnalyticsRecapResponse,
   CRMBehaviorResponse,
   NotificationLog,
+  ComplexityMetricsResponse,
 } from '../types';
 
 const API_BASE = '/api';
@@ -51,7 +53,7 @@ export const api = {
         return { authenticated: false, user: null };
       }
       return safeJson(res);
-    } catch (e) {
+    } catch (_) {
       return { authenticated: false, user: null };
     }
   },
@@ -102,6 +104,10 @@ export const api = {
     } catch (_) {}
     localStorage.removeItem('arez_token');
     localStorage.removeItem('arez_user');
+    localStorage.removeItem('arez_cache_queues');
+    localStorage.removeItem('arez_cache_services');
+    localStorage.removeItem('arez_cache_hpp');
+    localStorage.removeItem('arez_cache_transactions');
     return { success: true };
   },
 
@@ -214,7 +220,7 @@ export const api = {
   },
 
   // ----------------------------------------------------------------------
-  // Queues
+  // FIFO Queues
   // ----------------------------------------------------------------------
   async getQueues(date?: string): Promise<QueueItem[]> {
     const url = date ? `${API_BASE}/queues?date=${date}` : `${API_BASE}/queues`;
@@ -262,6 +268,17 @@ export const api = {
     return data;
   },
 
+  async requeueQueue(id: string): Promise<{ success: boolean; queue: QueueItem }> {
+    const res = await fetch(`${API_BASE}/queues/${id}/requeue`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      credentials: 'include',
+    });
+    const data = await safeJson(res);
+    if (!res.ok) throw new Error(data.error || 'Gagal mengembalikan antrean ke FIFO');
+    return data;
+  },
+
   async completeQueue(
     id: string,
     payload: {
@@ -305,7 +322,7 @@ export const api = {
   },
 
   // ----------------------------------------------------------------------
-  // Master HPP (Bahan Baku & Biaya Operasional)
+  // Master HPP & FIFO Stock Batches
   // ----------------------------------------------------------------------
   async getHPP(): Promise<MasterHPP[]> {
     const res = await fetch(`${API_BASE}/hpp`, {
@@ -319,6 +336,31 @@ export const api = {
     if (!Array.isArray(data)) {
       throw new Error('Invalid HPP response format');
     }
+    return data;
+  },
+
+  async getHPPBatches(hppId: string): Promise<{ item: MasterHPP; batches: HPPStockBatch[] }> {
+    const res = await fetch(`${API_BASE}/hpp/${hppId}/batches`, {
+      headers: getAuthHeaders(),
+      credentials: 'include',
+    });
+    const data = await safeJson(res, 'Gagal mengambil batch stok FIFO');
+    if (!res.ok) throw new Error(data.error || 'Gagal mengambil batch stok FIFO');
+    return data;
+  },
+
+  async addHPPBatch(
+    hppId: string,
+    payload: { quantity: number; unit_cost?: number; batch_code?: string; notes?: string }
+  ): Promise<{ success: boolean; batch: HPPStockBatch; message?: string }> {
+    const res = await fetch(`${API_BASE}/hpp/${hppId}/batches`, {
+      method: 'POST',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(payload),
+      credentials: 'include',
+    });
+    const data = await safeJson(res, 'Gagal menambah batch stok FIFO');
+    if (!res.ok) throw new Error(data.error || 'Gagal menambah batch stok FIFO');
     return data;
   },
 
@@ -380,7 +422,7 @@ export const api = {
       if (res.status === 409 && data && data.requires_confirmation) {
         return data;
       }
-      throw new Error((data && data.error) ? data.error : 'Gagal menghapus komponen HPP');
+      throw new Error(data && data.error ? data.error : 'Gagal menghapus komponen HPP');
     }
     return data || { success: true };
   },
@@ -484,7 +526,7 @@ export const api = {
   },
 
   // ----------------------------------------------------------------------
-  // Analytics & Recap
+  // Analytics & Complexity Diagnostics
   // ----------------------------------------------------------------------
   async getAnalyticsRecap(): Promise<AnalyticsRecapResponse> {
     const res = await fetch(`${API_BASE}/analytics/recap`, {
@@ -499,6 +541,16 @@ export const api = {
       };
     }
     return safeJson(res);
+  },
+
+  async getComplexityMetrics(): Promise<ComplexityMetricsResponse> {
+    const res = await fetch(`${API_BASE}/system/complexity-metrics`, {
+      headers: getAuthHeaders(),
+      credentials: 'include',
+    });
+    const data = await safeJson(res, 'Gagal memuat metrik Big O & FIFO');
+    if (!res.ok) throw new Error(data.error || 'Gagal memuat metrik Big O & FIFO');
+    return data;
   },
 
   // ----------------------------------------------------------------------

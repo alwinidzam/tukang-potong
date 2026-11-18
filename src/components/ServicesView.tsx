@@ -89,8 +89,15 @@ export const ServicesView: React.FC<ServicesViewProps> = ({
   const [savingHPP, setSavingHPP] = useState(false);
   const [hppFormError, setHppFormError] = useState<string | null>(null);
 
-  // Action Menu Dropdown / Deletion Modal State
+  // Action Menu Dropdown / Deletion Modal State & FIFO Batch Modal State
   const [activeMenuHPPId, setActiveMenuHPPId] = useState<string | null>(null);
+  const [batchModalHPP, setBatchModalHPP] = useState<MasterHPP | null>(null);
+  const [batchQuantity, setBatchQuantity] = useState<number | ''>(50);
+  const [batchUnitCost, setBatchUnitCost] = useState<number | ''>(1500);
+  const [batchCode, setBatchCode] = useState('');
+  const [batchNotes, setBatchNotes] = useState('');
+  const [savingBatch, setSavingBatch] = useState(false);
+
   const [deleteConfirmationHPP, setDeleteConfirmationHPP] = useState<{
     item: MasterHPP;
     warning?: string;
@@ -182,12 +189,15 @@ export const ServicesView: React.FC<ServicesViewProps> = ({
 
   const modalServiceHPP = selectedHPPItems.reduce((acc, item) => {
     const found = hppList.find((h) => h.id === item.hpp_id);
-    return acc + (found ? found.unit_cost * item.quantity_used : 0);
+    const activeHeadBatch = found?.batches?.find((b) => b.quantity_remaining > 0);
+    const unitCost = activeHeadBatch ? activeHeadBatch.unit_cost : found?.unit_cost || 0;
+    return acc + unitCost * item.quantity_used;
   }, 0);
 
-  const modalServiceProfit = sellingPrice - modalServiceHPP;
+  const numericSellingPrice = Number(sellingPrice || 0);
+  const modalServiceProfit = numericSellingPrice - modalServiceHPP;
   const modalServiceMargin =
-    sellingPrice > 0 ? Math.round((modalServiceProfit / sellingPrice) * 100) : 0;
+    numericSellingPrice > 0 ? Math.round((modalServiceProfit / numericSellingPrice) * 100) : 0;
 
   const handleSubmitService = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -337,6 +347,45 @@ export const ServicesView: React.FC<ServicesViewProps> = ({
       item,
       usedInServices: usedCount,
     });
+  };
+
+  const handleOpenBatchModal = (item: MasterHPP) => {
+    setActiveMenuHPPId(null);
+    setBatchModalHPP(item);
+    setBatchQuantity(50);
+    setBatchUnitCost(item.unit_cost);
+    const nextIdx = (item.batches?.length || 0) + 1;
+    setBatchCode(`FIFO-B${String(nextIdx).padStart(2, '0')}`);
+    setBatchNotes('');
+  };
+
+  const handleSaveBatch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!batchModalHPP) return;
+    const qty = Number(batchQuantity || 0);
+    const cost = Number(batchUnitCost || 0);
+    if (qty <= 0 || cost < 0) {
+      showToast('Jumlah stok harus > 0 dan harga beli >= 0', 'error');
+      return;
+    }
+
+    setSavingBatch(true);
+    try {
+      await api.addHPPBatch(batchModalHPP.id, {
+        quantity: qty,
+        unit_cost: cost,
+        batch_code: batchCode.trim() || undefined,
+        notes: batchNotes.trim() || undefined,
+      });
+      playSuccessSound();
+      showToast(`Stok Batch FIFO (+${qty} ${batchModalHPP.unit_type}) ditambahkan`, 'success');
+      setBatchModalHPP(null);
+      onRefreshData();
+    } catch (err: any) {
+      showToast(err.message || 'Gagal menambah batch stok FIFO', 'error');
+    } finally {
+      setSavingBatch(false);
+    }
   };
 
   const handleConfirmDeleteHPP = async (force = false) => {
@@ -693,13 +742,36 @@ export const ServicesView: React.FC<ServicesViewProps> = ({
 
                         <div className="flex flex-wrap items-center gap-3 text-xs text-[#686D66]">
                           <span className="font-bold text-[#20231F]">
-                            Rp {item.unit_cost.toLocaleString('id-ID')}
+                            Rp {(item.fifo_next_unit_cost ?? item.unit_cost).toLocaleString('id-ID')}
                             <span className="font-normal text-[#686D66]"> / {item.unit_type}</span>
                           </span>
 
                           <span className="text-[11px] text-[#92968F]">
                             • Digunakan di {usedCount} Layanan
                           </span>
+
+                          <span
+                            className={`text-[10px] font-mono px-2 py-0.5 rounded-[5px] border ${
+                              (item.total_stock || 0) > 0
+                                ? 'bg-[#E8ECE8]/70 border-[#26362E]/20 text-[#26362E] font-semibold'
+                                : 'bg-[#F7F6F2] border-[#E5E5DF] text-[#92968F]'
+                            }`}
+                          >
+                            {(item.total_stock || 0) > 0
+                              ? `Stok FIFO: ${item.total_stock} ${item.unit_type} (${item.active_batches_count || 0} batch)`
+                              : 'Tarif Standar (0 Batch)'}
+                          </span>
+                        </div>
+
+                        <div className="pt-1">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenBatchModal(item)}
+                            className="text-[11px] font-semibold text-[#26362E] bg-[#E8ECE8]/80 hover:bg-[#26362E] hover:text-white px-2.5 py-1 rounded-[6px] inline-flex items-center gap-1 transition-all"
+                          >
+                            <Plus className="w-3 h-3" />
+                            <span>Stok Batch FIFO</span>
+                          </button>
                         </div>
 
                         {item.description && (
@@ -1149,7 +1221,16 @@ export const ServicesView: React.FC<ServicesViewProps> = ({
                       return (
                         <div
                           key={h.id}
-                          className={`p-2.5 bg-[#FFFFFF] border rounded-[8px] flex items-center justify-between text-xs transition-all ${
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => handleToggleHPPInService(h.id)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              handleToggleHPPInService(h.id);
+                            }
+                          }}
+                          className={`p-2.5 bg-[#FFFFFF] border rounded-[8px] flex items-center justify-between text-xs cursor-pointer transition-all ${
                             isChecked ? 'border-[#26362E] bg-[#E8ECE8]/40' : 'border-[#E5E5DF]'
                           }`}
                         >
@@ -1157,21 +1238,25 @@ export const ServicesView: React.FC<ServicesViewProps> = ({
                             <input
                               type="checkbox"
                               checked={isChecked}
+                              onClick={(e) => e.stopPropagation()}
                               onChange={() => handleToggleHPPInService(h.id)}
-                              className="w-4 h-4 rounded text-[#26362E] focus:ring-[#26362E]"
+                              className="w-4 h-4 rounded text-[#26362E] focus:ring-[#26362E] cursor-pointer"
                             />
                             <div className="min-w-0">
                               <span className="truncate text-[#20231F] font-medium block">
                                 {h.item_name}
                               </span>
                               <span className="text-[10px] text-[#686D66]">
-                                Rp {h.unit_cost.toLocaleString('id-ID')} / {h.unit_type}
+                                Rp {(h.fifo_next_unit_cost ?? h.unit_cost).toLocaleString('id-ID')} / {h.unit_type}
                               </span>
                             </div>
                           </div>
 
                           {isChecked && (
-                            <div className="flex items-center gap-1.5 shrink-0">
+                            <div
+                              className="flex items-center gap-1.5 shrink-0"
+                              onClick={(e) => e.stopPropagation()}
+                            >
                               <input
                                 type="number"
                                 min="0.1"
@@ -1197,7 +1282,7 @@ export const ServicesView: React.FC<ServicesViewProps> = ({
                 <div className="flex justify-between">
                   <span className="text-[#686D66]">Harga Jual:</span>
                   <span className="font-semibold text-[#20231F]">
-                    Rp {sellingPrice.toLocaleString('id-ID')}
+                    Rp {numericSellingPrice.toLocaleString('id-ID')}
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -1225,6 +1310,165 @@ export const ServicesView: React.FC<ServicesViewProps> = ({
                   : isServiceEditMode
                   ? 'Simpan Perubahan Layanan'
                   : 'Buat Layanan Baru'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* BOTTOM SHEET: FIFO STOCK BATCH MODAL */}
+      {/* ------------------------------------------------------------- */}
+      {batchModalHPP && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-[#20231F]/50 backdrop-blur-xs">
+          <div
+            id="modal-hpp-batch"
+            className="w-full max-w-lg bg-[#FFFFFF] border border-[#E5E5DF] rounded-t-[20px] sm:rounded-[16px] p-5 sm:p-6 relative shadow-2xl max-h-[90vh] overflow-y-auto no-scrollbar space-y-4"
+            style={{ paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))' }}
+          >
+            <div className="w-10 h-1 bg-[#E5E5DF] rounded-full mx-auto sm:hidden -mt-1 mb-2" />
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-semibold tracking-[0.16em] uppercase text-[#686D66]">
+                  Inventori First-In, First-Out
+                </span>
+                <h3 className="font-display text-xl text-[#20231F]">
+                  Stok Batch FIFO — {batchModalHPP.item_name}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setBatchModalHPP(null)}
+                className="w-8 h-8 flex items-center justify-center rounded-[8px] bg-[#F1F1EC] text-[#686D66]"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Existing FIFO Queue of Batches */}
+            <div className="space-y-1.5">
+              <span className="text-[11px] font-semibold text-[#20231F] block">
+                Urutan Antrean Batch ({batchModalHPP.batches?.length || 0} Lot):
+              </span>
+              {!batchModalHPP.batches || batchModalHPP.batches.length === 0 ? (
+                <p className="text-xs text-[#686D66] p-3 bg-[#F7F6F2] rounded-[8px] border border-dashed border-[#E5E5DF]">
+                  Belum ada batch stok fisik. Tambahkan batch pertama agar kasir otomatis menghitung HPP FIFO.
+                </p>
+              ) : (
+                <div className="space-y-1.5 max-h-40 overflow-y-auto no-scrollbar">
+                  {batchModalHPP.batches.map((b, idx) => {
+                    const firstActiveIdx = batchModalHPP.batches!.findIndex((x) => x.quantity_remaining > 0);
+                    const isHead = idx === firstActiveIdx;
+                    return (
+                      <div
+                        key={b.id}
+                        className={`p-2.5 rounded-[8px] border text-xs flex items-center justify-between gap-2 ${
+                          isHead
+                            ? 'bg-[#E8ECE8]/70 border-[#26362E]'
+                            : b.quantity_remaining <= 0
+                            ? 'bg-[#F1F1EC] border-[#E5E5DF] opacity-60'
+                            : 'bg-[#FFFFFF] border-[#E5E5DF]'
+                        }`}
+                      >
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono font-bold text-[#20231F]">{b.batch_code}</span>
+                            {isHead && (
+                              <span className="text-[9px] font-mono font-bold bg-[#26362E] text-white px-1.5 py-0.5 rounded">
+                                FIFO HEAD (DIPAKAI DULUAN)
+                              </span>
+                            )}
+                            {b.quantity_remaining <= 0 && (
+                              <span className="text-[9px] bg-[#A84B45]/10 text-[#A84B45] px-1.5 py-0.5 rounded">
+                                HABIS
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-[#686D66]">
+                            Masuk: {new Date(b.received_at).toLocaleDateString('id-ID')}
+                            {b.notes ? ` • ${b.notes}` : ''}
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="font-semibold text-[#20231F]">
+                            {b.quantity_remaining} / {b.quantity_initial} {batchModalHPP.unit_type}
+                          </p>
+                          <p className="text-[10px] text-[#4F7A5A] font-semibold">
+                            @ Rp {b.unit_cost.toLocaleString('id-ID')}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <form onSubmit={handleSaveBatch} className="space-y-3 pt-2 border-t border-[#E5E5DF]">
+              <p className="text-xs font-semibold text-[#20231F]">+ Terima Batch Stok Baru (Enqueue Tail)</p>
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-xs font-medium text-[#20231F] mb-1">
+                    Kode Batch
+                  </label>
+                  <input
+                    type="text"
+                    value={batchCode}
+                    onChange={(e) => setBatchCode(e.target.value)}
+                    placeholder="FIFO-B01"
+                    className="w-full px-3 py-2 bg-[#FFFFFF] border border-[#E5E5DF] rounded-[8px] text-xs font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-[#20231F] mb-1">
+                    Jumlah Masuk ({batchModalHPP.unit_type})
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min="0.1"
+                    step="any"
+                    value={batchQuantity}
+                    onChange={(e) => setBatchQuantity(e.target.value === '' ? '' : Number(e.target.value))}
+                    className="w-full px-3 py-2 bg-[#FFFFFF] border border-[#E5E5DF] rounded-[8px] text-xs font-bold"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-xs font-medium text-[#20231F] mb-1">
+                    Harga Beli Satuan (Rp)
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min="0"
+                    value={batchUnitCost}
+                    onChange={(e) => setBatchUnitCost(e.target.value === '' ? '' : Number(e.target.value))}
+                    className="w-full px-3 py-2 bg-[#FFFFFF] border border-[#E5E5DF] rounded-[8px] text-xs font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-[#20231F] mb-1">
+                    Catatan Supplier
+                  </label>
+                  <input
+                    type="text"
+                    value={batchNotes}
+                    onChange={(e) => setBatchNotes(e.target.value)}
+                    placeholder="Opsional"
+                    className="w-full px-3 py-2 bg-[#FFFFFF] border border-[#E5E5DF] rounded-[8px] text-xs"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={savingBatch}
+                className="w-full min-h-[44px] py-2.5 bg-[#26362E] text-white text-xs font-semibold rounded-[8px] disabled:opacity-50"
+              >
+                {savingBatch ? 'Menyimpan...' : 'Simpan Batch ke Antrean FIFO'}
               </button>
             </form>
           </div>

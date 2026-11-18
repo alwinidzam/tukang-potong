@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { QueueItem, Service, DailyRecap, Transaction } from '../types';
 import { api } from '../lib/api';
 import { BatteryProgressBar } from './BatteryProgressBar';
@@ -11,15 +11,12 @@ import {
   RefreshCw,
   Printer,
   Receipt,
-  CreditCard,
-  Banknote,
-  QrCode,
-  ArrowRight,
   TrendingUp,
   Clock,
   X,
   ChevronRight,
-  DollarSign,
+  Lock,
+  RotateCcw,
 } from 'lucide-react';
 import { playSuccessSound } from '../lib/audio';
 import { ConfirmModal, ConfirmDialogState } from './ConfirmModal';
@@ -54,6 +51,29 @@ export const OwnerPOSView: React.FC<OwnerPOSViewProps> = ({
   const [walkInNotes, setWalkInNotes] = useState('');
   const [walkInSubmitting, setWalkInSubmitting] = useState(false);
 
+  // Sync default walk-in service when services load asynchronously
+  useEffect(() => {
+    if (services.length > 0 && !services.some((s) => s.id === walkInServiceId)) {
+      const firstActive = services.find((s) => s.is_active !== false) || services[0];
+      if (firstActive) setWalkInServiceId(firstActive.id);
+    }
+  }, [services, walkInServiceId]);
+
+  // Direct POS Checkout Modal State
+  const [isDirectPOSModalOpen, setIsDirectPOSModalOpen] = useState(false);
+  const [directGuestName, setDirectGuestName] = useState('Walk-In Kasir Langsung');
+  const [directServiceId, setDirectServiceId] = useState(services[0]?.id || '');
+  const [directPaymentMethod, setDirectPaymentMethod] = useState<'CASH' | 'QRIS' | 'DEBIT' | 'TRANSFER'>('CASH');
+  const [directDiscount, setDirectDiscount] = useState<number | ''>(0);
+  const [directSubmitting, setDirectSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (services.length > 0 && !services.some((s) => s.id === directServiceId)) {
+      const firstActive = services.find((s) => s.is_active !== false) || services[0];
+      if (firstActive) setDirectServiceId(firstActive.id);
+    }
+  }, [services, directServiceId]);
+
   // Checkout Form State
   const [checkoutPaymentMethod, setCheckoutPaymentMethod] = useState<'CASH' | 'QRIS' | 'DEBIT' | 'TRANSFER'>('CASH');
   const [checkoutDiscount, setCheckoutDiscount] = useState<number | ''>(0);
@@ -75,13 +95,52 @@ export const OwnerPOSView: React.FC<OwnerPOSViewProps> = ({
     onConfirm: () => {},
   });
 
-  // Calculate current checkout totals
+  // Calculate current checkout totals safely (prevents '' numeric bugs)
   const currentServicePrice = activeCheckoutQueue
     ? Number(activeCheckoutQueue.service_price || 0)
     : 0;
-  const netPayable = Math.max(0, currentServicePrice - checkoutDiscount + checkoutTax);
+  const numDiscount = Math.max(0, Number(checkoutDiscount || 0));
+  const numTax = Math.max(0, Number(checkoutTax || 0));
+  const netPayable = Math.max(0, currentServicePrice - numDiscount + numTax);
   const numericCashGiven = Number(cashGiven.replace(/\D/g, '') || 0);
   const cashChange = Math.max(0, numericCashGiven - netPayable);
+
+  // Requeue skipped customer back to FIFO tail
+  const handleRequeue = async (queueId: string) => {
+    try {
+      await api.requeueQueue(queueId);
+      showToast('Tamu dikembalikan ke ekor antrean FIFO', 'info');
+      onRefreshData();
+    } catch (err: any) {
+      showToast(err.message || 'Gagal mengembalikan ke antrean FIFO', 'error');
+    }
+  };
+
+  // Handle Direct POS Checkout Submit
+  const handleDirectPOSCheckout = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const selectedSrv = services.find((s) => s.id === directServiceId) || services[0];
+    setDirectSubmitting(true);
+    try {
+      const res = await api.directPOSCheckout({
+        customer_name: directGuestName.trim() || 'Walk-In Kasir Langsung',
+        service_id: selectedSrv?.id,
+        selling_price: selectedSrv?.selling_price ?? 50000,
+        discount: Math.max(0, Number(directDiscount || 0)),
+        payment_method: directPaymentMethod,
+      });
+      playSuccessSound();
+      setIsDirectPOSModalOpen(false);
+      setLastCompletedTransaction(res.transaction);
+      setIsReceiptModalOpen(true);
+      showToast('Transaksi Kasir Langsung berhasil', 'success');
+      onRefreshData();
+    } catch (err: any) {
+      showToast(err.message || 'Gagal memproses kasir langsung', 'error');
+    } finally {
+      setDirectSubmitting(false);
+    }
+  };
 
   // Handle Walk-In Form Submit
   const handleWalkInSubmit = async (e: React.FormEvent) => {
@@ -236,7 +295,9 @@ export const OwnerPOSView: React.FC<OwnerPOSViewProps> = ({
             <Scissors className="w-3.5 h-3.5 text-[#26362E]" />
             Sesi Pangkas Berjalan
           </span>
-          <span className="text-[10px] text-[#686D66] font-medium">Standar 18 Menit</span>
+          <span className="text-[10px] text-[#686D66] font-medium">
+            {activeSessionQueue ? `Standar ${activeSessionQueue.service_duration || 18} Menit` : 'Strict FIFO Engine'}
+          </span>
         </div>
 
         {activeSessionQueue ? (
@@ -244,7 +305,7 @@ export const OwnerPOSView: React.FC<OwnerPOSViewProps> = ({
             <BatteryProgressBar
               startTime={activeSessionQueue.start_time}
               isActive={true}
-              totalDurationMins={18}
+              totalDurationMins={activeSessionQueue.service_duration || 18}
               customerName={activeSessionQueue.customer_name}
               serviceName={activeSessionQueue.service_name}
               queueNumber={activeSessionQueue.queue_number}
@@ -286,15 +347,22 @@ export const OwnerPOSView: React.FC<OwnerPOSViewProps> = ({
             </div>
 
             {waitingQueues.length > 0 ? (
-              <button
-                id="btn-start-next-queue"
-                type="button"
-                onClick={() => handleStartQueue(waitingQueues[0].id)}
-                className="px-5 min-h-[44px] py-2.5 bg-[#26362E] hover:bg-[#1A2620] text-[#FFFFFF] text-xs font-semibold rounded-[8px] inline-flex items-center gap-2 active:scale-95 transition-all shadow-xs"
-              >
-                <Play className="w-3.5 h-3.5 fill-current" />
-                Mulai #{waitingQueues[0].queue_number} ({waitingQueues[0].customer_name})
-              </button>
+              <div className="space-y-2">
+                <span className="inline-block text-[9px] font-mono font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[#E8ECE8] text-[#26362E]">
+                  FIFO HEAD • GILIRAN BERIKUTNYA
+                </span>
+                <div>
+                  <button
+                    id="btn-start-next-queue"
+                    type="button"
+                    onClick={() => handleStartQueue(waitingQueues[0].id)}
+                    className="px-5 min-h-[44px] py-2.5 bg-[#26362E] hover:bg-[#1A2620] text-[#FFFFFF] text-xs font-semibold rounded-[8px] inline-flex items-center gap-2 active:scale-95 transition-all shadow-xs"
+                  >
+                    <Play className="w-3.5 h-3.5 fill-current" />
+                    Mulai #{waitingQueues[0].queue_number} ({waitingQueues[0].customer_name})
+                  </button>
+                </div>
+              </div>
             ) : (
               <button
                 type="button"
@@ -327,10 +395,14 @@ export const OwnerPOSView: React.FC<OwnerPOSViewProps> = ({
           id="btn-open-quick-cashier"
           type="button"
           onClick={() => {
-            if (waitingQueues.length > 0) {
+            if (activeSessionQueue) {
+              handleOpenCheckout(activeSessionQueue);
+            } else if (waitingQueues.length > 0) {
               handleOpenCheckout(waitingQueues[0]);
             } else if (services.length > 0) {
-              setIsWalkInModalOpen(true);
+              setIsDirectPOSModalOpen(true);
+            } else {
+              showToast('Tambahkan layanan di Katalog & HPP terlebih dahulu', 'info');
             }
           }}
           className="min-h-[46px] p-2.5 bg-[#FFFFFF] border border-[#E5E5DF] hover:border-[#26362E] rounded-[10px] flex items-center justify-center gap-2 text-xs font-semibold text-[#20231F] active:scale-98 transition-all shadow-xs"
@@ -380,43 +452,72 @@ export const OwnerPOSView: React.FC<OwnerPOSViewProps> = ({
             waitingQueues.length === 0 ? (
               <p className="text-xs text-[#686D66] py-6 text-center">Tidak ada antrean yang sedang menunggu.</p>
             ) : (
-              waitingQueues.map((q) => (
-                <div key={q.id} className="py-3 flex items-center justify-between gap-2 text-xs">
-                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                    <span className="font-mono text-xs font-semibold text-[#20231F] w-7 shrink-0">
-                      #{q.queue_number}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5">
-                        <p className="text-xs font-semibold text-[#20231F] truncate">{q.customer_name}</p>
-                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-[#F1F1EC] text-[#686D66] shrink-0">
-                          {q.source}
-                        </span>
+              waitingQueues.map((q, idx) => {
+                const isFifoHead = q.is_fifo_head ?? idx === 0;
+                const fifoOrder = q.fifo_rank ?? idx + 1;
+                return (
+                  <div key={q.id} className="py-3 flex items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      <span
+                        className={`font-mono text-xs font-semibold w-7 shrink-0 ${
+                          isFifoHead ? 'text-[#26362E]' : 'text-[#686D66]'
+                        }`}
+                      >
+                        #{q.queue_number}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="text-xs font-semibold text-[#20231F] truncate">{q.customer_name}</p>
+                          <span className="text-[9px] px-1.5 py-0.2 rounded bg-[#F1F1EC] text-[#686D66] shrink-0">
+                            {q.source}
+                          </span>
+                          {isFifoHead ? (
+                            <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-[#E8ECE8] text-[#26362E] shrink-0">
+                              FIFO HEAD #1
+                            </span>
+                          ) : (
+                            <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-[#F7F6F2] border border-[#E5E5DF] text-[#92968F] shrink-0">
+                              Urutan #{fifoOrder}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-[#686D66] truncate">{q.service_name}</p>
                       </div>
-                      <p className="text-[11px] text-[#686D66] truncate">{q.service_name}</p>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {isFifoHead ? (
+                        <button
+                          type="button"
+                          onClick={() => handleStartQueue(q.id)}
+                          className="px-3 py-1.5 bg-[#26362E] hover:bg-[#1A2620] text-[#FFFFFF] text-xs font-semibold rounded-[6px] flex items-center gap-1 active:scale-95 transition-all shadow-xs"
+                        >
+                          <Play className="w-3 h-3 fill-current" />
+                          <span>Mulai</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled
+                          title="Aturan Strict FIFO: Layani atau lewati tamu terdepan (#1) terlebih dahulu"
+                          className="px-2.5 py-1.5 bg-[#F1F1EC] text-[#92968F] border border-[#E5E5DF] text-[11px] font-medium rounded-[6px] flex items-center gap-1 cursor-not-allowed"
+                        >
+                          <Lock className="w-3 h-3" />
+                          <span>Tunggu</span>
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleSkipQueue(q.id)}
+                        title="Lewati Antrean (Skip)"
+                        className="p-1.5 rounded-[6px] text-[#686D66] hover:text-[#A84B45] bg-[#F1F1EC] hover:bg-[#E5E5DF] transition-all"
+                      >
+                        <XCircle className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
-
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => handleStartQueue(q.id)}
-                      className="px-3 py-1.5 bg-[#26362E] hover:bg-[#1A2620] text-[#FFFFFF] text-xs font-semibold rounded-[6px] flex items-center gap-1 active:scale-95 transition-all shadow-xs"
-                    >
-                      <Play className="w-3 h-3 fill-current" />
-                      <span>Mulai</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleSkipQueue(q.id)}
-                      title="Lewati"
-                      className="p-1.5 rounded-[6px] text-[#686D66] hover:text-[#A84B45] bg-[#F1F1EC] hover:bg-[#E5E5DF] transition-all"
-                    >
-                      <XCircle className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              ))
+                );
+              })
             )
           )}
 
@@ -454,8 +555,8 @@ export const OwnerPOSView: React.FC<OwnerPOSViewProps> = ({
               <p className="text-xs text-[#686D66] py-6 text-center">Tidak ada antrean yang dilewati.</p>
             ) : (
               skippedQueues.map((q) => (
-                <div key={q.id} className="py-2.5 flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2 min-w-0">
+                <div key={q.id} className="py-2.5 flex items-center justify-between gap-2 text-xs">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
                     <span className="font-mono text-xs font-semibold text-[#686D66] line-through w-7 shrink-0">
                       #{q.queue_number}
                     </span>
@@ -464,13 +565,24 @@ export const OwnerPOSView: React.FC<OwnerPOSViewProps> = ({
                       <p className="text-[11px] text-[#92968F] truncate">{q.service_name}</p>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => handleStartQueue(q.id)}
-                    className="px-2.5 py-1 text-[11px] font-medium text-[#26362E] bg-[#E8ECE8] rounded-[6px] hover:bg-[#26362E] hover:text-[#FFFFFF] transition-all"
-                  >
-                    Panggil Ulang
-                  </button>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleRequeue(q.id)}
+                      title="Kembalikan ke Ekor Antrean FIFO"
+                      className="px-2 py-1 text-[11px] font-medium text-[#686D66] bg-[#F1F1EC] border border-[#E5E5DF] rounded-[6px] hover:text-[#20231F] inline-flex items-center gap-1 transition-all"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      <span>Antre FIFO</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleStartQueue(q.id)}
+                      className="px-2.5 py-1 text-[11px] font-medium text-[#26362E] bg-[#E8ECE8] rounded-[6px] hover:bg-[#26362E] hover:text-[#FFFFFF] transition-all"
+                    >
+                      Panggil Ulang
+                    </button>
+                  </div>
                 </div>
               ))
             )
@@ -823,6 +935,17 @@ export const OwnerPOSView: React.FC<OwnerPOSViewProps> = ({
                   <span>HPP Bahan:</span>
                   <span>Rp {(lastCompletedTransaction.total_hpp ?? 0).toLocaleString('id-ID')}</span>
                 </div>
+                {lastCompletedTransaction.fifo_batches_used &&
+                  lastCompletedTransaction.fifo_batches_used.length > 0 && (
+                    <div className="text-[9px] text-[#686D66] pl-2 border-l border-[#E5E5DF] space-y-0.5">
+                      {lastCompletedTransaction.fifo_batches_used.map((b, i) => (
+                        <div key={`${b.batch_id}-${i}`} className="flex justify-between">
+                          <span>FIFO {b.batch_code} ({b.quantity_taken}x):</span>
+                          <span>Rp {b.subtotal.toLocaleString('id-ID')}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 <div className="flex justify-between text-[10px] text-[#4F7A5A] font-semibold">
                   <span>Laba Bersih:</span>
                   <span>Rp {(lastCompletedTransaction.net_profit ?? 0).toLocaleString('id-ID')}</span>
@@ -851,6 +974,95 @@ export const OwnerPOSView: React.FC<OwnerPOSViewProps> = ({
                 Tutup
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* DIRECT POS MODAL (WHEN NO QUEUE IS WAITING) */}
+      {isDirectPOSModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-[#20231F]/50 backdrop-blur-xs">
+          <div
+            id="direct-pos-modal"
+            className="w-full max-w-md bg-[#FFFFFF] border border-[#E5E5DF] rounded-t-[20px] sm:rounded-[16px] p-5 sm:p-6 relative shadow-2xl max-h-[90vh] overflow-y-auto no-scrollbar space-y-4"
+            style={{ paddingBottom: 'calc(20px + env(safe-area-inset-bottom, 0px))' }}
+          >
+            <div className="w-10 h-1 bg-[#E5E5DF] rounded-full mx-auto sm:hidden -mt-1 mb-2" />
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-semibold tracking-[0.16em] uppercase text-[#686D66]">
+                  Transaksi Instan
+                </span>
+                <h3 className="font-display text-xl text-[#20231F]">Kasir Cepat Langsung</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsDirectPOSModalOpen(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-[8px] bg-[#F1F1EC] text-[#686D66]"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleDirectPOSCheckout} className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-medium text-[#20231F] mb-1">Nama Pelanggan</label>
+                <input
+                  type="text"
+                  value={directGuestName}
+                  onChange={(e) => setDirectGuestName(e.target.value)}
+                  className="w-full px-3 py-2 bg-[#FFFFFF] border border-[#E5E5DF] rounded-[8px] text-xs text-[#20231F]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-[#20231F] mb-1">Pilih Layanan</label>
+                <select
+                  value={directServiceId}
+                  onChange={(e) => setDirectServiceId(e.target.value)}
+                  className="w-full px-3 py-2 bg-[#FFFFFF] border border-[#E5E5DF] rounded-[8px] text-xs text-[#20231F]"
+                >
+                  {services.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.service_name} — Rp {s.selling_price.toLocaleString('id-ID')}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-medium text-[#20231F] mb-1">Diskon (Rp)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={directDiscount}
+                    onChange={(e) => setDirectDiscount(e.target.value === '' ? '' : Number(e.target.value))}
+                    className="w-full px-3 py-2 bg-[#FFFFFF] border border-[#E5E5DF] rounded-[8px] text-xs text-[#20231F]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-[#20231F] mb-1">Metode Bayar</label>
+                  <select
+                    value={directPaymentMethod}
+                    onChange={(e) => setDirectPaymentMethod(e.target.value as any)}
+                    className="w-full px-3 py-2 bg-[#FFFFFF] border border-[#E5E5DF] rounded-[8px] text-xs text-[#20231F]"
+                  >
+                    <option value="CASH">CASH</option>
+                    <option value="QRIS">QRIS</option>
+                    <option value="DEBIT">DEBIT</option>
+                    <option value="TRANSFER">TRANSFER</option>
+                  </select>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={directSubmitting}
+                className="w-full min-h-[46px] py-2.5 bg-[#26362E] text-[#FFFFFF] text-xs font-semibold rounded-[8px] flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {directSubmitting ? 'Memproses...' : 'Bayar & Cetak Struk'}
+              </button>
+            </form>
           </div>
         </div>
       )}

@@ -74,12 +74,12 @@ async function runHPPAndServicesTests() {
     await page.locator('#modal-service input[type="number"]').nth(1).fill('25'); // Duration
     await page.locator('#modal-service textarea[placeholder*="Potong presisi"]').fill('Layanan potong rambut eksekutif lengkap dengan cuci rambut dan hair tonic');
 
-    // Link HPP item to recipe
-    const hppCheckbox = page.locator(`#modal-service div:has-text("${hppName}")`).first();
-    if (await hppCheckbox.isVisible()) {
-      await hppCheckbox.click();
-      console.log(`PASS: Linked "${hppName}" to the service recipe.`);
-    }
+    // Link HPP item to recipe (target clickable row explicitly)
+    const hppRow = page.locator(`#modal-service div[role="button"]:has-text("${hppName}")`).first();
+    await hppRow.waitFor({ state: 'visible', timeout: 5000 });
+    await hppRow.click();
+    await page.waitForSelector('text=Komposisi HPP Bahan (1 Terpilih)', { timeout: 5000 });
+    console.log(`PASS: Linked "${hppName}" to the service recipe (1 Terpilih confirmed).`);
 
     // Submit Service Form
     await page.locator('#btn-submit-save-service').click();

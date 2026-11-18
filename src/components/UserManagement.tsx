@@ -6,7 +6,6 @@ import {
   Users,
   UserPlus,
   Search,
-  CheckCircle2,
   XCircle,
   KeyRound,
   Trash2,
@@ -21,25 +20,32 @@ import {
   EyeOff,
 } from 'lucide-react';
 import { playSuccessSound } from '../lib/audio';
+import { ConfirmModal, ConfirmDialogState } from './ConfirmModal';
+import { useToast } from './Toast';
 
 interface UserManagementProps {
   currentUser: User | null;
 }
 
 export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) => {
+  const { showToast } = useToast();
+  const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
   const [staffList, setStaffList] = useState<User[]>([]);
   const [summary, setSummary] = useState({ total: 0, active: 0, inactive: 0 });
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
   const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Modals state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState<User | null>(null);
   const [resetPasswordStaff, setResetPasswordStaff] = useState<User | null>(null);
-  const [deleteConfirmStaff, setDeleteConfirmStaff] = useState<User | null>(null);
 
   // Create Form State
   const [createForm, setCreateForm] = useState<StaffCreatePayload>({
@@ -108,8 +114,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
   }, []);
 
   const showNotification = (msg: string) => {
-    setSuccessMessage(msg);
-    setTimeout(() => setSuccessMessage(null), 3500);
+    showToast(msg, 'success');
   };
 
   // Handle Create Staff
@@ -195,20 +200,25 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
     }
   };
 
-  // Handle Delete Staff
-  const handleDeleteStaff = async () => {
-    if (!deleteConfirmStaff) return;
-    try {
-      setSubmitting(true);
-      await api.deleteStaff(deleteConfirmStaff.id);
-      showNotification(`Staf "${deleteConfirmStaff.full_name}" telah dinonaktifkan.`);
-      setDeleteConfirmStaff(null);
-      fetchStaffData();
-    } catch (err: any) {
-      setError(err.message || 'Gagal menghapus staf.');
-    } finally {
-      setSubmitting(false);
-    }
+  // Handle Delete Staff via Minimalist In-App ConfirmModal
+  const handlePromptDeleteStaff = (staff: User) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Nonaktifkan Staf',
+      message: `Apakah Anda yakin ingin menonaktifkan akun staf "${staff.full_name}"? Data riwayat transaksi tetap aman terjaga.`,
+      confirmText: 'Ya, Nonaktifkan',
+      cancelText: 'Batal',
+      variant: 'danger',
+      onConfirm: async () => {
+        try {
+          await api.deleteStaff(staff.id);
+          showNotification(`Staf "${staff.full_name}" telah dinonaktifkan.`);
+          fetchStaffData();
+        } catch (err: any) {
+          showToast(err.message || 'Gagal menghapus staf.', 'error');
+        }
+      },
+    });
   };
 
   const filteredStaff = staffList.filter((s) => {
@@ -246,14 +256,6 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
           <RefreshCw className="w-3.5 h-3.5" />
         </button>
       </div>
-
-      {/* Success Notification Banner */}
-      {successMessage && (
-        <div className="p-3 bg-[#E8ECE8] border border-[#4F7A5A]/30 text-[#4F7A5A] rounded-[10px] text-xs flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 shrink-0" />
-          <span>{successMessage}</span>
-        </div>
-      )}
 
       {/* Error Banner */}
       {error && (
@@ -429,7 +431,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
                     </button>
                     <button
                       type="button"
-                      onClick={() => setDeleteConfirmStaff(staff)}
+                      onClick={() => handlePromptDeleteStaff(staff)}
                       title="Hapus Staf"
                       className="p-1.5 rounded-[6px] text-[#686D66] hover:text-[#A84B45] bg-[#F1F1EC]"
                     >
@@ -707,34 +709,10 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
         </div>
       )}
 
-      {/* CONFIRM DELETE MODAL */}
-      {deleteConfirmStaff && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#20231F]/50 backdrop-blur-xs">
-          <div className="w-full max-w-sm bg-[#FFFFFF] border border-[#E5E5DF] rounded-[16px] p-5 relative shadow-2xl space-y-3">
-            <h3 className="font-display text-lg text-[#20231F]">Hapus Staf</h3>
-            <p className="text-xs text-[#686D66] leading-relaxed">
-              Apakah Anda yakin ingin menonaktifkan akun staf <strong>{deleteConfirmStaff.full_name}</strong>?
-            </p>
-            <div className="flex items-center gap-2 pt-2">
-              <button
-                type="button"
-                onClick={handleDeleteStaff}
-                disabled={submitting}
-                className="flex-1 py-2 bg-[#A84B45] text-[#FFFFFF] text-xs font-semibold rounded-[8px] active:scale-95 transition-all"
-              >
-                {submitting ? 'Memproses...' : 'Ya, Nonaktifkan'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setDeleteConfirmStaff(null)}
-                className="px-4 py-2 bg-[#F1F1EC] text-xs font-medium text-[#20231F] rounded-[8px]"
-              >
-                Batal
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        dialog={confirmDialog}
+        onClose={() => setConfirmDialog((prev) => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 };

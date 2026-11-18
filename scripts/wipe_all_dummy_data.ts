@@ -20,8 +20,14 @@ async function wipeAllDummyData() {
     const { error: errS } = await supabaseAdmin.from('services').delete().neq('id', '___keep_none___');
     console.log('[Supabase] Services cleared:', errS ? errS.message : 'OK');
 
+    const { error: errB } = await supabaseAdmin.from('hpp_batches').delete().neq('id', '___keep_none___');
+    console.log('[Supabase] HPP batches cleared:', errB ? errB.message : 'OK');
+
     const { error: errH } = await supabaseAdmin.from('hpp_items').delete().neq('id', '___keep_none___');
     console.log('[Supabase] HPP items cleared:', errH ? errH.message : 'OK');
+
+    const { error: errN } = await supabaseAdmin.from('notifications').delete().neq('id', '___keep_none___');
+    console.log('[Supabase] Notifications cleared:', errN ? errN.message : 'OK');
 
     // Keep only primary Super Admin Owner
     const { error: errU } = await supabaseAdmin.from('users').delete().neq('id', 'usr-admin');
@@ -65,12 +71,14 @@ async function wipeAllDummyData() {
       },
     ],
     master_hpp: [],
+    hpp_batches: [],
     services: [],
     service_hpp_relations: [],
     queues: [],
     transactions: [],
     notifications: [],
     revoked_tokens: [],
+    revoked_before: {},
   };
 
   const dataPath = path.resolve(process.cwd(), 'arez_data.json');

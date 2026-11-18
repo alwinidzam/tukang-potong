@@ -1,10 +1,9 @@
 import crypto from 'crypto';
 import { Request, Response, NextFunction } from 'express';
-import { db, User, UserRole } from './db.js';
+import { db, UserRole } from './db.js';
 
 const SESSION_SECRET = process.env.SESSION_SECRET || 'arez_session_v2_auto_fallback_x89f_2026';
-const OWNER_DEFAULT_PASSWORD = process.env.OWNER_DEFAULT_PASSWORD || 'Arez008';
-const SESSION_TTL_MS = 365 * 24 * 60 * 60 * 1000; // 365 days (1 year permanent session - eliminates unexpected auto-logout)
+const SESSION_TTL_MS = 365 * 24 * 60 * 60 * 1000; // 365 days
 
 export interface SessionData {
   sessionId: string;
@@ -14,21 +13,29 @@ export interface SessionData {
   expiresAt: number;
 }
 
-// In-Memory Active Session Cache
+// In-Memory Active Session Cache (O(1) Map lookup)
 const sessions = new Map<string, SessionData>();
 
 export const PASSWORD_HASH_ITERATIONS = 100000;
 const HASH_SCHEME = 'pbkdf2_sha256';
 
-/**
- * Helper to compute HMAC signature for a token payload
- */
 function signPayload(payload: string): string {
   return crypto.createHmac('sha256', SESSION_SECRET).update(payload).digest('hex');
 }
 
+function safeTimingEqualHex(hexA: string, hexB: string): boolean {
+  try {
+    const bufA = Buffer.from(hexA, 'hex');
+    const bufB = Buffer.from(hexB, 'hex');
+    if (bufA.length === 0 || bufA.length !== bufB.length) return false;
+    return crypto.timingSafeEqual(bufA, bufB);
+  } catch (_) {
+    return false;
+  }
+}
+
 /**
- * Generates a tamper-proof cryptographically signed persistent token
+ * Generates a tamper-proof cryptographically signed persistent token.
  * Format: arez_v2.<userId>.<role>.<expiresAt>.<signature>
  */
 export function generateSignedToken(userId: string, role: UserRole, expiresAt = Date.now() + SESSION_TTL_MS): string {
@@ -38,16 +45,16 @@ export function generateSignedToken(userId: string, role: UserRole, expiresAt = 
 }
 
 /**
- * Verifies a signed token without relying solely on ephemeral in-memory process state.
- * This guarantees the user stays logged in across server reboots, container cold-starts,
- * and page refreshes.
+ * Verifies a signed token in O(1) time using HashSet & Timestamp checks.
+ * Backdoor static tokens have been completely removed.
  */
 export function verifySignedToken(token: string): { valid: boolean; userId: string; role: UserRole } | null {
   try {
     if (!token || typeof token !== 'string') return null;
-    if ((db.getData().revoked_tokens || []).includes(token)) return null;
 
-    // Support arez_v2 signed format
+    // O(1) Set lookup for explicitly revoked tokens
+    if (db.revokedTokensSet.has(token)) return null;
+
     if (token.startsWith('arez_v2.')) {
       const parts = token.split('.');
       if (parts.length !== 5) return null;
@@ -58,15 +65,17 @@ export function verifySignedToken(token: string): { valid: boolean; userId: stri
         return null;
       }
 
+      // Check per-user token revocation watermark (invalidates all prior tokens on deactivate/reset)
+      const issuedAt = expiresAt - SESSION_TTL_MS;
+      const revokedBefore = db.getData().revoked_before?.[userId] || 0;
+      if (revokedBefore > 0 && issuedAt <= revokedBefore) {
+        return null;
+      }
+
       const expectedPayload = `${userId}.${role}.${expiresAtStr}`;
       const expectedSig = signPayload(expectedPayload);
 
-      const isValidSig = crypto.timingSafeEqual(
-        Buffer.from(receivedSig, 'hex'),
-        Buffer.from(expectedSig, 'hex')
-      );
-
-      if (isValidSig) {
+      if (safeTimingEqualHex(receivedSig, expectedSig)) {
         const canonicalRole: UserRole = isOwnerRole(role) ? 'OWNER' : isStaffRole(role) ? 'STAFF' : 'CUSTOMER';
         return {
           valid: true,
@@ -74,25 +83,26 @@ export function verifySignedToken(token: string): { valid: boolean; userId: stri
           role: canonicalRole,
         };
       }
+      return null;
     }
 
-    // Support in-memory cache lookup
+    // Support in-memory cache lookup (O(1))
     const memSession = sessions.get(token);
     if (memSession && Date.now() <= memSession.expiresAt) {
-      const canonicalRole: UserRole = isOwnerRole(memSession.role) ? 'OWNER' : isStaffRole(memSession.role) ? 'STAFF' : 'CUSTOMER';
+      const revokedBefore = db.getData().revoked_before?.[memSession.userId] || 0;
+      if (revokedBefore > 0 && memSession.createdAt <= revokedBefore) {
+        sessions.delete(token);
+        return null;
+      }
+      const canonicalRole: UserRole = isOwnerRole(memSession.role)
+        ? 'OWNER'
+        : isStaffRole(memSession.role)
+        ? 'STAFF'
+        : 'CUSTOMER';
       return {
         valid: true,
         userId: memSession.userId,
         role: canonicalRole,
-      };
-    }
-
-    // Support default preview Owner token auto-healing
-    if (token === 'usr-admin' || token === 'owner-preview-token' || token === 'default-owner-token') {
-      return {
-        valid: true,
-        userId: 'usr-admin',
-        role: 'OWNER',
       };
     }
 
@@ -103,8 +113,7 @@ export function verifySignedToken(token: string): { valid: boolean; userId: stri
 }
 
 /**
- * Cryptographically secure password hashing using PBKDF2-HMAC-SHA256 with 100,000 iterations + Random Salt
- * Format: pbkdf2_sha256$iterations$salt$hash
+ * Cryptographically secure password hashing using PBKDF2-HMAC-SHA256 (100,000 iterations + Random Salt)
  */
 export function hashPassword(password: string): string {
   const salt = crypto.randomBytes(16).toString('hex');
@@ -117,22 +126,17 @@ export interface PasswordVerifyResult {
   needsRehash: boolean;
 }
 
-/**
- * Timing-safe password verification with backward compatibility for legacy format (salt:hash)
- * and seamless progressive rehash detection.
- */
 export function verifyPassword(password: string, combinedHash: string): PasswordVerifyResult {
   try {
     if (!combinedHash || typeof combinedHash !== 'string') {
       return { valid: false, needsRehash: false };
     }
 
-    // Plaintext fallback during migrations
+    // Legacy plaintext fallback during migration
     if (combinedHash === password) {
       return { valid: true, needsRehash: true };
     }
 
-    // Check versioned scheme: pbkdf2_sha256$iterations$salt$hash
     if (combinedHash.startsWith(`${HASH_SCHEME}$`)) {
       const parts = combinedHash.split('$');
       if (parts.length !== 4) return { valid: false, needsRehash: false };
@@ -141,19 +145,18 @@ export function verifyPassword(password: string, combinedHash: string): Password
       if (isNaN(iterations) || iterations <= 0) return { valid: false, needsRehash: false };
 
       const verifyHash = crypto.pbkdf2Sync(password, salt, iterations, 64, 'sha256').toString('hex');
-      const isValid = crypto.timingSafeEqual(Buffer.from(originalHash, 'hex'), Buffer.from(verifyHash, 'hex'));
+      const isValid = safeTimingEqualHex(originalHash, verifyHash);
       return {
         valid: isValid,
         needsRehash: isValid && iterations < PASSWORD_HASH_ITERATIONS,
       };
     }
 
-    // Legacy format: salt:hash (10,000 iterations)
     const parts = combinedHash.split(':');
     if (parts.length === 2) {
       const [salt, originalHash] = parts;
       const verifyHash = crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha256').toString('hex');
-      const isValid = crypto.timingSafeEqual(Buffer.from(originalHash, 'hex'), Buffer.from(verifyHash, 'hex'));
+      const isValid = safeTimingEqualHex(originalHash, verifyHash);
       return {
         valid: isValid,
         needsRehash: isValid,
@@ -166,27 +169,18 @@ export function verifyPassword(password: string, combinedHash: string): Password
   }
 }
 
-/**
- * Helper to test if a role is Owner
- */
 export function isOwnerRole(role?: string | null): boolean {
   if (!role) return false;
   const upper = String(role).toUpperCase();
   return upper === 'OWNER' || upper === 'SUPER_ADMIN' || upper === 'ADMIN' || upper === 'MANAGER';
 }
 
-/**
- * Helper to test if a role is Staff
- */
 export function isStaffRole(role?: string | null): boolean {
   if (!role) return false;
   const upper = String(role).toUpperCase();
   return upper === 'STAFF' || upper === 'BARBER' || upper === 'CASHIER';
 }
 
-/**
- * Generate a new cryptographically secure session with signed persistent token
- */
 export function createSession(userId: string, role: UserRole): SessionData {
   const now = Date.now();
   const expiresAt = now + SESSION_TTL_MS;
@@ -205,9 +199,6 @@ export function createSession(userId: string, role: UserRole): SessionData {
   return session;
 }
 
-/**
- * Retrieve session if valid and not expired
- */
 export function getSession(sessionId: string): SessionData | null {
   const verified = verifySignedToken(sessionId);
   if (!verified) return null;
@@ -221,36 +212,18 @@ export function getSession(sessionId: string): SessionData | null {
   };
 }
 
-/**
- * Revoke/destroy an active session
- */
-export function revokeAllUserTokens(userId: string): void {
-  const data = db.getData();
-  if (!data.revoked_tokens) {
-    data.revoked_tokens = [];
-  }
-  data.revoked_tokens.push(userId);
-  db.saveData();
-
-  // Invalidate any local memory sessions
-  for (const [sId, sess] of sessions.entries()) {
-    if (sess.userId === userId) {
-      sessions.delete(sId);
-    }
-  }
-}
-
 export function revokeToken(tokenId: string): void {
   const data = db.getData();
   if (!data.revoked_tokens) {
     data.revoked_tokens = [];
   }
-  data.revoked_tokens.push(tokenId);
-  db.saveData();
-
-  if (sessions.has(tokenId)) {
-    sessions.delete(tokenId);
+  if (!db.revokedTokensSet.has(tokenId)) {
+    db.revokedTokensSet.add(tokenId);
+    data.revoked_tokens.push(tokenId);
+    db.saveData();
   }
+
+  sessions.delete(tokenId);
 }
 
 export function destroySession(sessionId: string): void {
@@ -258,27 +231,25 @@ export function destroySession(sessionId: string): void {
 }
 
 /**
- * Invalidate all active sessions for a specific user ID
+ * Invalidate all active and previously issued sessions for a specific user ID in O(1) watermark + O(active)
  */
 export function destroyUserSessions(userId: string): void {
   const data = db.getData();
+  if (!data.revoked_before) data.revoked_before = {};
+  data.revoked_before[userId] = Date.now();
+
   if (!data.revoked_tokens) data.revoked_tokens = [];
-  let changed = false;
-  
   for (const [sessionId, session] of sessions.entries()) {
     if (session.userId === userId) {
+      db.revokedTokensSet.add(sessionId);
       data.revoked_tokens.push(sessionId);
       sessions.delete(sessionId);
-      changed = true;
     }
   }
-  
-  if (changed) {
-    db.saveData();
-  }
+
+  db.saveData();
 }
 
-// Extend Express Request type with authenticated user
 export interface AuthenticatedRequest extends Request {
   user?: {
     id: string;
@@ -292,13 +263,11 @@ export interface AuthenticatedRequest extends Request {
 }
 
 /**
- * Authentication Middleware: Extracts session from HttpOnly cookie or Authorization Bearer header.
- * Robustly verifies token across process restarts so sessions NEVER terminate unexpectedly.
+ * Authentication Middleware: O(1) user lookup via db.usersById
  */
 export function authenticate(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   let token: string | undefined = req.cookies?.arez_session;
 
-  // Fallback to Bearer token if header provided
   if (!token && req.headers.authorization?.startsWith('Bearer ')) {
     token = req.headers.authorization.substring(7).trim();
   }
@@ -306,18 +275,21 @@ export function authenticate(req: AuthenticatedRequest, res: Response, next: Nex
   if (token) {
     const verified = verifySignedToken(token);
     if (verified) {
-      const data = db.getData();
-      const user = data.users.find(u => u.id === verified.userId);
+      // O(1) HashMap lookup instead of O(N) array.find
+      const user = db.usersById.get(verified.userId);
       if (user) {
-        // Enforce account status check: Inactive staff accounts cannot access system
-        if (user.status === 'INACTIVE') {
+        if (user.status === 'INACTIVE' || user.deleted_at) {
           destroySession(token);
           req.user = null;
           req.sessionId = null;
           return next();
         }
 
-        const canonicalRole: UserRole = isOwnerRole(user.role) ? 'OWNER' : isStaffRole(user.role) ? 'STAFF' : 'CUSTOMER';
+        const canonicalRole: UserRole = isOwnerRole(user.role)
+          ? 'OWNER'
+          : isStaffRole(user.role)
+          ? 'STAFF'
+          : 'CUSTOMER';
 
         req.user = {
           id: user.id,
@@ -338,9 +310,6 @@ export function authenticate(req: AuthenticatedRequest, res: Response, next: Nex
   next();
 }
 
-/**
- * Middleware requiring active authentication
- */
 export function requireAuth(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   if (!req.user) {
     return res.status(401).json({
@@ -351,9 +320,6 @@ export function requireAuth(req: AuthenticatedRequest, res: Response, next: Next
   next();
 }
 
-/**
- * Middleware requiring specific role (RBAC) - strictly enforces canonical roles (OWNER, STAFF, CUSTOMER)
- */
 export function requireRole(...roles: UserRole[]) {
   return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     if (!req.user) {
@@ -364,8 +330,8 @@ export function requireRole(...roles: UserRole[]) {
     }
 
     const userRole = String(req.user.role).toUpperCase();
-    const isOwner = userRole === 'OWNER' || userRole === 'SUPER_ADMIN' || userRole === 'ADMIN';
-    const isStaff = userRole === 'STAFF' || userRole === 'BARBER' || userRole === 'CASHIER';
+    const isOwner = isOwnerRole(userRole);
+    const isStaff = isStaffRole(userRole);
 
     let isAllowed = roles.includes(req.user.role);
     if (roles.includes('OWNER') && isOwner) isAllowed = true;

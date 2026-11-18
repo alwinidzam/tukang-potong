@@ -2,13 +2,9 @@ import 'dotenv/config';
 import express from 'express';
 import cookieParser from 'cookie-parser';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
 import apiRouter from './server/routes.js';
 import { db } from './server/db.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 async function startServer() {
   // Initialize Cloud Database Sync
@@ -17,6 +13,7 @@ async function startServer() {
   });
 
   const app = express();
+  app.set('trust proxy', 1);
   const PORT = 3000;
 
   // JSON Body Parser & URL Encoded & Cookie Parser
